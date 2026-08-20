@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — SouthCoins RP</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&display=swap');
+  :root{
+    --bg:#050506; --panel:#0d0d11; --panel-2:#131318; --line:#242429;
+    --text:#f5f5f5; --dim:#95949e; --violet:#a855f7; --violet-bright:#c793ff;
+    --gold:#f0b429; --gold-bright:#ffd15c; --green:#22c55e; --red:#ef4444;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    background:
+      radial-gradient(circle at 10% 0%, #1a1024 0%, transparent 45%),
+      radial-gradient(circle at 90% 15%, #0f1a12 0%, transparent 40%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  h1{
+    font-family:'Poppins', sans-serif; font-weight:900; font-size:26px;
+    margin-bottom:6px;
+  }
+  h1 .vip{ color:var(--violet-bright); }
+  .sub{ color:var(--dim); font-size:13px; margin-bottom:28px; }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:32px;
+    width:100%;
+    max-width:420px;
+  }
+
+  label{
+    display:block; font-size:11px; letter-spacing:1.2px; text-transform:uppercase;
+    color:var(--dim); font-weight:700; margin-bottom:8px; margin-top:18px;
+  }
+  label:first-of-type{ margin-top:0; }
+
+  input{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    color:var(--text);
+    font-family:"Courier New",monospace;
+    font-size:15px;
+    outline:none;
+    transition:border-color .2s ease;
+  }
+  input:focus{ border-color:var(--violet); }
+
+  button{
+    width:100%;
+    margin-top:24px;
+    background:var(--violet);
+    border:none;
+    color:#fff;
+    font-weight:800;
+    font-size:14.5px;
+    padding:13px 20px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:all .18s ease;
+  }
+  button:hover{ filter:brightness(1.12); box-shadow:0 0 18px rgba(168,85,247,.4); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+
+  button.secondary{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--dim);
+    margin-top:10px;
+  }
+  button.secondary:hover{ color:var(--text); border-color:var(--violet); box-shadow:none; }
+
+  .msg{ margin-top:16px; font-size:13.5px; padding:12px 14px; border-radius:10px; display:none; }
+  .msg.show{ display:block; }
+  .msg.ok{ background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.4); color:#7ee0a0; }
+  .msg.err{ background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.4); color:#ff9b9b; }
+
+  .balance-preview{
+    margin-top:18px;
+    padding:14px 16px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:12px;
+    font-size:14px;
+    display:none;
+  }
+  .balance-preview.show{ display:block; }
+  .balance-preview .num{ font-size:22px; font-weight:800; color:var(--gold-bright); }
+
+  #logoutBtn{ display:none; }
+
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h1><span class="vip">South</span>Coins Admin</h1>
+  <div class="sub">Panneau réservé — ajout de Coins par code boutique</div>
+
+  <!-- ---------- LOGIN ---------- -->
+  <div id="loginBox">
+    <label>Email admin</label>
+    <input type="email" id="email" placeholder="toi@exemple.com" autocomplete="username">
+    <label>Mot de passe</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    <button id="loginBtn">Se connecter</button>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <!-- ---------- ADMIN PANEL ---------- -->
+  <div id="adminBox" class="hidden">
+    <label>Code boutique (6 chiffres)</label>
+    <input type="text" id="codeInput" maxlength="6" placeholder="123456" inputmode="numeric">
+    <button class="secondary" id="lookupBtn">Vérifier le code</button>
+
+    <div class="balance-preview" id="balancePreview">
+      Solde actuel : <span class="num" id="currentBalance">—</span> Coins
+    </div>
+
+    <label>Montant à ajouter</label>
+    <input type="number" id="amountInput" placeholder="500" min="1" step="1">
+    <button id="addBtn">Ajouter les Coins</button>
+    <button class="secondary" id="logoutBtn">Se déconnecter</button>
+    <div class="msg" id="adminMsg"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  const loginBox = document.getElementById('loginBox');
+  const adminBox = document.getElementById('adminBox');
+  const loginMsg = document.getElementById('loginMsg');
+  const adminMsg = document.getElementById('adminMsg');
+  const balancePreview = document.getElementById('balancePreview');
+  const currentBalance = document.getElementById('currentBalance');
+  let verifiedCode = null;
+
+  function showMsg(el, text, ok){
+    el.textContent = text;
+    el.className = 'msg show ' + (ok ? 'ok' : 'err');
+  }
+
+  auth.onAuthStateChanged(user=>{
+    if(user){
+      loginBox.classList.add('hidden');
+      adminBox.classList.remove('hidden');
+      document.getElementById('logoutBtn').style.display = 'block';
+    } else {
+      loginBox.classList.remove('hidden');
+      adminBox.classList.add('hidden');
+    }
+  });
+
+  document.getElementById('loginBtn').addEventListener('click', ()=>{
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('password').value;
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(err=> showMsg(loginMsg, "Connexion refusée : " + err.message, false));
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{
+    auth.signOut();
+  });
+
+  document.getElementById('lookupBtn').addEventListener('click', async ()=>{
+    const code = document.getElementById('codeInput').value.trim();
+    adminMsg.className = 'msg';
+    if(!/^\d{6}$/.test(code)){
+      showMsg(adminMsg, "Le code doit contenir exactement 6 chiffres.", false);
+      return;
+    }
+    try{
+      const ref = db.collection('shopCodes').doc(code);
+      const snap = await ref.get();
+      if(!snap.exists){
+        showMsg(adminMsg, "Aucun compte trouvé pour ce code.", false);
+        balancePreview.classList.remove('show');
+        verifiedCode = null;
+        return;
+      }
+      verifiedCode = code;
+      currentBalance.textContent = (snap.data().coins||0).toLocaleString('fr-FR');
+      balancePreview.classList.add('show');
+      adminMsg.className = 'msg';
+    } catch(err){
+      showMsg(adminMsg, "Erreur : " + err.message, false);
+    }
+  });
+
+  document.getElementById('addBtn').addEventListener('click', async ()=>{
+    const amount = parseInt(document.getElementById('amountInput').value, 10);
+    if(!verifiedCode){
+      showMsg(adminMsg, "Vérifie d'abord un code boutique valide.", false);
+      return;
+    }
+    if(!amount || amount <= 0){
+      showMsg(adminMsg, "Entre un montant valide.", false);
+      return;
+    }
+    try{
+      const ref = db.collection('shopCodes').doc(verifiedCode);
+      await ref.update({ coins: firebase.firestore.FieldValue.increment(amount) });
+      const snap = await ref.get();
+      currentBalance.textContent = (snap.data().coins||0).toLocaleString('fr-FR');
+      showMsg(adminMsg, `${amount.toLocaleString('fr-FR')} Coins ajoutés au code ${verifiedCode}.`, true);
+      document.getElementById('amountInput').value = '';
+    } catch(err){
+      showMsg(adminMsg, "Erreur lors de l'ajout : " + err.message, false);
+    }
+  });
+</script>
+</body>
+</html>
