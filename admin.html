@@ -36,7 +36,7 @@
     border-radius:18px;
     padding:32px;
     width:100%;
-    max-width:420px;
+    max-width:460px;
   }
 
   label{
@@ -99,6 +99,42 @@
   }
   .balance-preview.show{ display:block; }
   .balance-preview .num{ font-size:22px; font-weight:800; color:var(--gold-bright); }
+  .balance-preview .player-row{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:8px; padding-top:8px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--dim);
+  }
+  .balance-preview .player-row .val{ color:var(--text); font-weight:700; }
+
+  /* ---------------- HISTORIQUE DES ACHATS ---------------- */
+  .history{
+    margin-top:18px;
+    display:none;
+  }
+  .history.show{ display:block; }
+  .history label{ margin-top:0; }
+  .history-list{
+    max-height:260px;
+    overflow-y:auto;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .history-empty{
+    color:var(--dim); font-size:12.5px; padding:10px 0;
+  }
+  .history-item{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:12.5px;
+  }
+  .history-item .h-top{
+    display:flex; align-items:center; justify-content:space-between;
+    color:var(--dim); font-family:"Courier New",monospace; font-size:11px;
+    margin-bottom:6px;
+  }
+  .history-item .h-total{ color:var(--gold-bright); font-weight:800; }
+  .history-item .h-items{ color:var(--text); line-height:1.5; }
 
   #logoutBtn{ display:none; }
 
@@ -129,6 +165,17 @@
 
     <div class="balance-preview" id="balancePreview">
       Solde actuel : <span class="num" id="currentBalance">—</span> Coins
+      <div class="player-row">
+        <span>Pseudo Discord</span>
+        <span class="val" id="playerPseudo">—</span>
+      </div>
+    </div>
+
+    <div class="history" id="historyBox">
+      <label>Historique des achats</label>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Aucun achat pour l'instant.</div>
+      </div>
     </div>
 
     <label>Montant à ajouter</label>
@@ -150,11 +197,56 @@
   const adminMsg = document.getElementById('adminMsg');
   const balancePreview = document.getElementById('balancePreview');
   const currentBalance = document.getElementById('currentBalance');
+  const playerPseudo = document.getElementById('playerPseudo');
+  const historyBox = document.getElementById('historyBox');
+  const historyList = document.getElementById('historyList');
   let verifiedCode = null;
 
   function showMsg(el, text, ok){
     el.textContent = text;
     el.className = 'msg show ' + (ok ? 'ok' : 'err');
+  }
+
+  function fmtDate(ts){
+    if(!ts || !ts.toDate) return '—';
+    const d = ts.toDate();
+    return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  // Charge et affiche les dernières commandes passées avec ce code boutique
+  // (sous-collection shopCodes/{code}/purchases, alimentée par vip-shop.html au moment du paiement).
+  async function loadHistory(code){
+    historyList.innerHTML = '<div class="history-empty">Chargement...</div>';
+    historyBox.classList.add('show');
+    try{
+      const snap = await db.collection('shopCodes').doc(code)
+        .collection('purchases')
+        .orderBy('createdAt', 'desc')
+        .limit(15)
+        .get();
+
+      if(snap.empty){
+        historyList.innerHTML = '<div class="history-empty">Aucun achat pour l\'instant.</div>';
+        return;
+      }
+
+      historyList.innerHTML = snap.docs.map(doc=>{
+        const d = doc.data();
+        const items = (d.items||[]).map(it => `${it.name} x${it.qty}`).join(', ') || '—';
+        const total = (d.total||0).toLocaleString('fr-FR');
+        return `
+          <div class="history-item">
+            <div class="h-top">
+              <span>${fmtDate(d.createdAt)}</span>
+              <span class="h-total">${total} Coins</span>
+            </div>
+            <div class="h-items">${items}</div>
+          </div>`;
+      }).join('');
+    } catch(err){
+      console.error(err);
+      historyList.innerHTML = '<div class="history-empty">Erreur de chargement de l\'historique.</div>';
+    }
   }
 
   auth.onAuthStateChanged(user=>{
@@ -192,13 +284,17 @@
       if(!snap.exists){
         showMsg(adminMsg, "Aucun compte trouvé pour ce code.", false);
         balancePreview.classList.remove('show');
+        historyBox.classList.remove('show');
         verifiedCode = null;
         return;
       }
       verifiedCode = code;
-      currentBalance.textContent = (snap.data().coins||0).toLocaleString('fr-FR');
+      const data = snap.data();
+      currentBalance.textContent = (data.coins||0).toLocaleString('fr-FR');
+      playerPseudo.textContent = data.pseudo ? data.pseudo : 'Non renseigné';
       balancePreview.classList.add('show');
       adminMsg.className = 'msg';
+      loadHistory(code);
     } catch(err){
       showMsg(adminMsg, "Erreur : " + err.message, false);
     }

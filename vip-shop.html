@@ -495,9 +495,77 @@
   .cart-checkout-btn:hover{ filter:brightness(1.1); }
   .cart-checkout-btn:disabled{ opacity:.55; cursor:not-allowed; }
   .cart-msg{ margin-top:10px; font-size:12.5px; text-align:center; min-height:16px; }
+
+  /* ---------------- MODALE PSEUDO DISCORD (première visite) ---------------- */
+  .pseudo-overlay{
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,.7); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .pseudo-overlay.hidden{ display:none !important; }
+  .pseudo-modal{
+    width:100%; max-width:400px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:28px;
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.6);
+  }
+  .pseudo-modal h2{
+    font-family:'Poppins', sans-serif; font-weight:800; font-size:20px;
+    margin-bottom:6px;
+  }
+  .pseudo-modal h2 .vip{ color:var(--violet-bright); }
+  .pseudo-modal .sub{ color:var(--dim); font-size:13px; margin-bottom:20px; }
+  .pseudo-modal label{
+    display:block; font-size:11px; letter-spacing:1.2px; text-transform:uppercase;
+    color:var(--dim); font-weight:700; margin-bottom:8px;
+  }
+  .pseudo-modal input{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    color:var(--text);
+    font-family:"Courier New",monospace;
+    font-size:15px;
+    outline:none;
+    transition:border-color .2s ease;
+  }
+  .pseudo-modal input:focus{ border-color:var(--violet); }
+  .pseudo-modal button{
+    width:100%;
+    margin-top:18px;
+    background:var(--violet);
+    border:none;
+    color:#fff;
+    font-weight:800;
+    font-size:14.5px;
+    padding:13px 20px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:all .18s ease;
+  }
+  .pseudo-modal button:hover{ filter:brightness(1.12); box-shadow:0 0 18px rgba(168,85,247,.4); }
+  .pseudo-modal button:disabled{ opacity:.5; cursor:not-allowed; }
+  .pseudo-modal .err{ color:var(--red); font-size:12.5px; margin-top:10px; min-height:14px; }
 </style>
 </head>
 <body>
+
+<!-- ============ MODALE : pseudo Discord (première visite) ============ -->
+<div class="pseudo-overlay hidden" id="pseudoOverlay">
+  <div class="pseudo-modal">
+    <h2><span class="vip">Bienvenue sur</span> SouthCoins RP</h2>
+    <div class="sub">Indique ton pseudo Discord pour continuer. Il sera lié à ton code boutique et affiché à l'admin lors de tes commandes.</div>
+    <label>Pseudo Discord</label>
+    <input type="text" id="pseudoInput" placeholder="TonPseudo#0000" autocomplete="off" maxlength="60">
+    <button id="pseudoSubmitBtn">Continuer</button>
+    <div class="err" id="pseudoErr"></div>
+  </div>
+</div>
 
 <div class="wrap">
 
@@ -608,15 +676,23 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script>
-  // Code boutique + solde de l'utilisateur courant, accessibles depuis le script du panier plus bas
+  // Code boutique + solde + pseudo Discord de l'utilisateur courant, accessibles
+  // depuis le script du panier plus bas
   let CURRENT_SHOP_CODE = null;
   let CURRENT_BALANCE = 0;
+  let CURRENT_PSEUDO = null;
 
   (function(){
     const CODE_KEY = 'sw_shop_code';
+    const PSEUDO_KEY = 'sw_discord_pseudo';
     const shopCodeEl = document.getElementById('shopCode');
     const balanceEl = document.getElementById('balanceNum');
     const copyBtn = document.getElementById('copyCodeBtn');
+
+    const pseudoOverlay = document.getElementById('pseudoOverlay');
+    const pseudoInput = document.getElementById('pseudoInput');
+    const pseudoSubmitBtn = document.getElementById('pseudoSubmitBtn');
+    const pseudoErr = document.getElementById('pseudoErr');
 
     function randomCode(){
       return String(Math.floor(100000 + Math.random()*900000));
@@ -651,10 +727,59 @@
       });
     }
 
-    ensureCode().then(code=>{
+    // Demande le pseudo Discord au premier passage, le lie au code boutique en base,
+    // puis affiche la boutique. Si le pseudo est déjà connu localement, on ne redemande pas.
+    function ensurePseudo(code){
+      return new Promise((resolve)=>{
+        const cached = localStorage.getItem(PSEUDO_KEY);
+        if(cached){
+          CURRENT_PSEUDO = cached;
+          pseudoOverlay.classList.add('hidden');
+          resolve(cached);
+          return;
+        }
+
+        pseudoOverlay.classList.remove('hidden');
+        pseudoInput.focus();
+
+        async function submit(){
+          const value = pseudoInput.value.trim();
+          pseudoErr.textContent = '';
+          if(value.length < 2){
+            pseudoErr.textContent = 'Entre un pseudo Discord valide.';
+            return;
+          }
+          pseudoSubmitBtn.disabled = true;
+          pseudoSubmitBtn.textContent = 'Enregistrement...';
+          try{
+            await db.collection('shopCodes').doc(code).set({
+              pseudo: value,
+              pseudoUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            localStorage.setItem(PSEUDO_KEY, value);
+            CURRENT_PSEUDO = value;
+            pseudoOverlay.classList.add('hidden');
+            pseudoSubmitBtn.removeEventListener('click', submit);
+            resolve(value);
+          } catch(err){
+            console.error(err);
+            pseudoErr.textContent = "Erreur lors de l'enregistrement, réessaie.";
+          } finally {
+            pseudoSubmitBtn.disabled = false;
+            pseudoSubmitBtn.textContent = 'Continuer';
+          }
+        }
+
+        pseudoSubmitBtn.addEventListener('click', submit);
+        pseudoInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') submit(); });
+      });
+    }
+
+    ensureCode().then(async code=>{
       CURRENT_SHOP_CODE = code;
       shopCodeEl.textContent = code;
       listenBalance(code);
+      await ensurePseudo(code);
     }).catch(err=>{
       console.error(err);
       shopCodeEl.textContent = 'ERREUR';
@@ -997,9 +1122,12 @@ async function checkout(){
 
   try{
     const ref = db.collection('shopCodes').doc(CURRENT_SHOP_CODE);
+    const purchaseRef = ref.collection('purchases').doc();
 
     // Transaction Firestore : on relit le solde au moment du paiement et on ne débite
     // que si le solde est suffisant, pour éviter tout achat au-delà du solde réel.
+    // On enregistre aussi la commande dans l'historique (shopCodes/{code}/purchases)
+    // pour que l'admin puisse le consulter plus tard.
     await db.runTransaction(async (tx)=>{
       const snap = await tx.get(ref);
       const coins = snap.exists ? (snap.data().coins||0) : 0;
@@ -1007,6 +1135,12 @@ async function checkout(){
         throw new Error('INSUFFICIENT_FUNDS');
       }
       tx.update(ref, { coins: firebase.firestore.FieldValue.increment(-total) });
+      tx.set(purchaseRef, {
+        pseudo: CURRENT_PSEUDO || null,
+        items: itemsSnapshot.map(it => ({ name: it.name, qty: it.qty, price: it.price })),
+        total,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     });
 
     // Paiement confirmé : on vide le panier et on prévient sur Discord
@@ -1046,6 +1180,7 @@ async function notifyDiscord(items, total){
     title: '🛒 Nouvelle commande — SouthCoins RP',
     color: 0xA855F7,
     fields: [
+      { name: 'Joueur', value: CURRENT_PSEUDO ? CURRENT_PSEUDO : '—', inline: true },
       { name: 'Code boutique', value: `\`${CURRENT_SHOP_CODE}\``, inline: true },
       { name: 'Total débité', value: `${fmt(total)} Coins`, inline: true },
       { name: `Articles (${items.length})`, value: lines.join('\n') || '—' }
