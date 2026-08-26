@@ -1023,8 +1023,10 @@ async function checkout(){
     msg.style.color = 'var(--red)';
     if(err.message === 'INSUFFICIENT_FUNDS'){
       msg.textContent = "Solde insuffisant pour valider ce panier.";
+    } else if(err.code === 'permission-denied'){
+      msg.textContent = "Paiement refusé (permissions Firestore) — les règles de sécurité bloquent l'écriture pour un visiteur non connecté.";
     } else {
-      msg.textContent = "Erreur lors du paiement, réessaie.";
+      msg.textContent = "Erreur lors du paiement : " + (err.code || err.message || 'inconnue') + ". Réessaie.";
     }
   } finally {
     btn.disabled = cart.size===0;
