@@ -13,7 +13,7 @@ les soldes en ligne, partagés entre tous les visiteurs de ton site GitHub Pages
 ## 1. Crée ton projet Firebase
 
 1. Va sur https://console.firebase.google.com
-2. **Ajouter un projet** → donne-lui un nom (ex: `southcoins-rp`) → crée-le
+2. **Ajouter un projet** → donne-lui un nom (ex: `n`) → crée-le
 3. Une fois dans le projet, clique sur l'icône **`</>`** (Web) pour ajouter une "Web App"
 4. Donne-lui un surnom, clique **Enregistrer et continuer**
 5. Firebase t'affiche un bloc `firebaseConfig = {...}` → **copie ces valeurs**

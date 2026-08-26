@@ -14,4 +14,6 @@ const firebaseConfig = {
 // Ne touche pas à ce qui suit
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const auth = firebase.auth();
+// `auth` n'est utile que sur les pages qui chargent firebase-auth-compat.js (ex: admin.html).
+// On protège l'appel pour que ce même fichier fonctionne aussi sur vip-shop.html sans planter.
+const auth = firebase.auth ? firebase.auth() : null;

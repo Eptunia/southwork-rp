@@ -404,6 +404,97 @@
   .copy-btn:hover{ color:var(--text); border-color:var(--violet); }
   .copy-btn svg{ width:14px; height:14px; }
   .code-hint{ font-size:11px; color:var(--dim); margin-top:2px; }
+
+  /* ---------------- CART FAB ---------------- */
+  #cartFoot{ cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
+
+  .cart-fab{
+    position:fixed; right:26px; bottom:26px; z-index:60;
+    width:58px; height:58px; border-radius:50%;
+    background:var(--violet); border:none; color:#fff; cursor:pointer;
+    font-size:24px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 26px -8px rgba(168,85,247,.65);
+    transition:transform .18s ease, filter .18s ease;
+  }
+  .cart-fab:hover{ transform:translateY(-3px) scale(1.05); filter:brightness(1.1); }
+  .cart-fab-badge{
+    position:absolute; top:-4px; right:-4px;
+    background:var(--red); color:#fff; font-family:'Poppins',sans-serif; font-weight:800;
+    font-size:11px; min-width:20px; height:20px; border-radius:999px;
+    display:none; align-items:center; justify-content:center; padding:0 5px;
+    border:2px solid var(--bg);
+  }
+
+  /* ---------------- CART DRAWER ---------------- */
+  .cart-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(2px);
+    opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:70;
+  }
+  .cart-overlay.show{ opacity:1; pointer-events:auto; }
+
+  .cart-drawer{
+    position:fixed; top:0; right:0; height:100%; width:380px; max-width:92vw;
+    background:var(--panel); border-left:1px solid var(--line);
+    transform:translateX(100%); transition:transform .25s cubic-bezier(.2,.8,.3,1);
+    z-index:71; display:flex; flex-direction:column;
+  }
+  .cart-drawer.open{ transform:translateX(0); }
+
+  .cart-drawer-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 22px; border-bottom:1px solid var(--line);
+  }
+  .cart-drawer-head h3{ font-family:'Poppins',sans-serif; font-size:19px; font-weight:800; }
+  .cart-close{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:14px;
+  }
+  .cart-close:hover{ border-color:var(--red); color:var(--red); }
+
+  .cart-items{ flex:1; overflow-y:auto; padding:14px 18px; display:flex; flex-direction:column; gap:12px; }
+  .cart-empty{ color:var(--dim); font-size:13.5px; text-align:center; margin-top:30px; }
+
+  .cart-row{
+    display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:6px 10px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+  }
+  .cart-row-name{ font-size:13.5px; font-weight:700; grid-column:1 / span 2; }
+  .cart-row-remove{
+    grid-column:3; grid-row:1; justify-self:end;
+    background:transparent; border:none; color:var(--dim); cursor:pointer; font-size:13px;
+  }
+  .cart-row-remove:hover{ color:var(--red); }
+  .cart-row-ctrl{ display:flex; align-items:center; gap:8px; grid-column:1; grid-row:2; }
+  .qty-btn{
+    width:24px; height:24px; border-radius:7px; background:var(--bg); border:1px solid var(--line);
+    color:var(--text); cursor:pointer; font-weight:800; display:flex; align-items:center; justify-content:center;
+  }
+  .qty-btn:hover{ border-color:var(--violet); }
+  .qty-val{ font-family:"Courier New",monospace; font-weight:700; min-width:18px; text-align:center; }
+  .cart-row-price{
+    grid-column:2; grid-row:2; justify-self:end;
+    font-family:"Courier New",monospace; font-weight:700; color:var(--gold-bright); font-size:13px;
+  }
+
+  .cart-drawer-foot{ padding:16px 18px 20px; border-top:1px solid var(--line); }
+  .cart-total-row{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:15px; font-weight:800; margin-bottom:14px;
+  }
+  .coin-inline{ color:var(--gold-bright); }
+  .cart-clear-btn{
+    width:100%; background:transparent; border:1px solid var(--line); color:var(--dim);
+    padding:10px; border-radius:10px; cursor:pointer; font-weight:700; font-size:13px; margin-bottom:8px;
+  }
+  .cart-clear-btn:hover{ border-color:var(--red); color:var(--red); }
+  .cart-checkout-btn{
+    width:100%; background:var(--gold); border:none; color:#0a0a0c;
+    padding:13px; border-radius:10px; cursor:pointer; font-weight:800; font-size:14.5px;
+    transition:filter .15s ease;
+  }
+  .cart-checkout-btn:hover{ filter:brightness(1.1); }
+  .cart-checkout-btn:disabled{ opacity:.55; cursor:not-allowed; }
+  .cart-msg{ margin-top:10px; font-size:12.5px; text-align:center; min-height:16px; }
 </style>
 </head>
 <body>
@@ -487,11 +578,40 @@
     <span id="cartFoot">Panier : 0 articles — 0 pièces</span>
   </footer>
 
+  <!-- ============ PANIER : bouton flottant + tiroir ============ -->
+  <button class="cart-fab" id="cartFab" title="Voir mon panier">
+    🛒<span class="cart-fab-badge" id="cartFabBadge">0</span>
+  </button>
+
+  <div class="cart-overlay" id="cartOverlay"></div>
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-drawer-head">
+      <h3>Mon panier</h3>
+      <button class="cart-close" id="cartCloseBtn">✕</button>
+    </div>
+    <div class="cart-items" id="cartItemsList">
+      <div class="cart-empty">Ton panier est vide.</div>
+    </div>
+    <div class="cart-drawer-foot">
+      <div class="cart-total-row">
+        <span>Total</span>
+        <span><span id="cartTotalVal">0</span> <span class="coin-inline">Coins</span></span>
+      </div>
+      <button class="cart-clear-btn" id="cartClearBtn">Vider le panier</button>
+      <button class="cart-checkout-btn" id="cartCheckoutBtn">Valider et payer</button>
+      <div class="cart-msg" id="cartMsg"></div>
+    </div>
+  </aside>
+
   <!-- ============ FIREBASE : solde & code boutique ============ -->
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script>
+  // Code boutique + solde de l'utilisateur courant, accessibles depuis le script du panier plus bas
+  let CURRENT_SHOP_CODE = null;
+  let CURRENT_BALANCE = 0;
+
   (function(){
     const CODE_KEY = 'sw_shop_code';
     const shopCodeEl = document.getElementById('shopCode');
@@ -524,6 +644,7 @@
       db.collection('shopCodes').doc(code).onSnapshot(snap=>{
         const data = snap.data();
         const coins = data ? (data.coins||0) : 0;
+        CURRENT_BALANCE = coins;
         animateNumber(balanceEl, coins);
       }, err=>{
         console.error('Erreur de connexion au solde :', err);
@@ -531,6 +652,7 @@
     }
 
     ensureCode().then(code=>{
+      CURRENT_SHOP_CODE = code;
       shopCodeEl.textContent = code;
       listenBalance(code);
     }).catch(err=>{
@@ -601,6 +723,11 @@ const CATS = [
   {id:'packs', label:'Packs', sub:'Armes, argent & diamants', accent:'--packs', icon:`<img src="${TILE_IMG.packs}" alt="Packs">`, size:''},
 ];
 
+/* ---------------- CONFIG ---------------- */
+// Remplace cette URL par le webhook du salon Discord où tu veux recevoir les alertes de commande.
+// Discord -> Paramètres du salon -> Intégrations -> Webhooks -> Nouveau webhook -> Copier l'URL
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/METS_TON_ID/METS_TON_TOKEN";
+
 const ITEMS = {
   weapons:[
     {name:'Revolver Double Action', price:550, icon:ICONS.pistol, image:'images/revolver-double-action.png'},
@@ -660,10 +787,21 @@ const sectionCount = document.getElementById('sectionCount');
 const cartFoot = document.getElementById('cartFoot');
 const backBtn = document.getElementById('backBtn');
 
-let selected = new Set();
-let cartTotal = 0;
+// cart : Map<key, {catId, name, price, qty, image}>
+const cart = new Map();
 
 function fmt(n){ return n.toLocaleString('fr-FR'); }
+
+function cartTotalCoins(){
+  let t = 0;
+  cart.forEach(it => t += it.price * it.qty);
+  return t;
+}
+function cartItemCount(){
+  let c = 0;
+  cart.forEach(it => c += it.qty);
+  return c;
+}
 
 function renderBento(){
   bento.innerHTML = CATS.map(c=>`
@@ -693,9 +831,9 @@ function openCategory(catId){
 
   itemGrid.innerHTML = list.map((it,i)=>{
     const key = catId+'|'+it.name;
-    const isSel = selected.has(key);
+    const inCart = cart.get(key);
     return `
-    <div class="card ${isSel?'selected':''}" style="--c:var(${cat.accent}); animation-delay:${i*0.04}s" data-key="${key}" data-price="${it.price}">
+    <div class="card ${inCart?'selected':''}" style="--c:var(${cat.accent}); animation-delay:${i*0.04}s" data-key="${key}">
       <div class="card-art">
         ${it.rarity?`<span class="rarity-tag">${it.rarity}</span>`:''}
         ${it.image?`<img class="item-photo" src="${it.image}" alt="${it.name}">`:it.icon}
@@ -703,14 +841,15 @@ function openCategory(catId){
       <div class="card-name">${it.name}</div>
       <div class="card-foot">
         <div class="price"><span class="coin">SW</span>${fmt(it.price)}</div>
-        <button class="buy-btn">${isSel?'Ajouté':'Ajouter'}</button>
+        <button class="buy-btn">${inCart?`Ajouté (${inCart.qty})`:'Ajouter'}</button>
       </div>
     </div>`;
   }).join('');
 
-  itemGrid.querySelectorAll('.card').forEach(card=>{
-    card.addEventListener('click', ()=> toggleSelect(card));
-    card.querySelector('.buy-btn').addEventListener('click', (e)=>{ e.stopPropagation(); toggleSelect(card); });
+  itemGrid.querySelectorAll('.card').forEach((card, idx)=>{
+    const it = list[idx];
+    card.addEventListener('click', ()=> addToCart(catId, it));
+    card.querySelector('.buy-btn').addEventListener('click', (e)=>{ e.stopPropagation(); addToCart(catId, it); });
   });
 
   window.scrollTo({top: itemSection.offsetTop - 20, behavior:'smooth'});
@@ -722,22 +861,201 @@ backBtn.addEventListener('click', ()=>{
   trustBar.classList.remove('hidden');
 });
 
-function toggleSelect(card){
-  const key = card.dataset.key;
-  const price = parseInt(card.dataset.price,10);
-  if(selected.has(key)){
-    selected.delete(key); cartTotal -= price;
-    card.classList.remove('selected');
-    card.querySelector('.buy-btn').textContent = 'Ajouter';
+/* ---------------- CART LOGIC ---------------- */
+function addToCart(catId, item){
+  const key = catId + '|' + item.name;
+  if(cart.has(key)){
+    cart.get(key).qty++;
   } else {
-    selected.add(key); cartTotal += price;
-    card.classList.add('selected');
-    card.querySelector('.buy-btn').textContent = 'Ajouté';
+    cart.set(key, {catId, name:item.name, price:item.price, qty:1, image:item.image||null});
   }
+  bumpCard(key);
+  updateCartUI();
+}
+
+function changeQty(key, delta){
+  const it = cart.get(key);
+  if(!it) return;
+  it.qty += delta;
+  if(it.qty <= 0) cart.delete(key);
+  updateCartUI();
+}
+
+function removeFromCart(key){
+  cart.delete(key);
+  updateCartUI();
+}
+
+function clearCart(){
+  cart.clear();
+  updateCartUI();
+}
+
+function bumpCard(key){
+  const card = itemGrid.querySelector(`.card[data-key="${CSS.escape(key)}"]`);
+  if(!card) return;
   card.style.transition = 'transform .08s ease';
   card.style.transform = 'scale(.95)';
   requestAnimationFrame(()=> requestAnimationFrame(()=>{ card.style.transition=''; card.style.transform=''; }));
-  cartFoot.textContent = `Panier : ${selected.size} article${selected.size!==1?'s':''} — ${fmt(cartTotal)} pièces`;
+}
+
+function refreshCardStates(){
+  itemGrid.querySelectorAll('.card').forEach(card=>{
+    const key = card.dataset.key;
+    const btn = card.querySelector('.buy-btn');
+    const it = cart.get(key);
+    if(it){
+      card.classList.add('selected');
+      btn.textContent = `Ajouté (${it.qty})`;
+    } else {
+      card.classList.remove('selected');
+      btn.textContent = 'Ajouter';
+    }
+  });
+}
+
+function updateCartUI(){
+  const count = cartItemCount();
+  const total = cartTotalCoins();
+
+  cartFoot.textContent = `Panier : ${count} article${count!==1?'s':''} — ${fmt(total)} pièces`;
+
+  const badge = document.getElementById('cartFabBadge');
+  badge.textContent = count;
+  badge.style.display = count>0 ? 'flex' : 'none';
+
+  document.getElementById('cartTotalVal').textContent = fmt(total);
+  document.getElementById('cartCheckoutBtn').disabled = count===0;
+
+  const list = document.getElementById('cartItemsList');
+  if(cart.size===0){
+    list.innerHTML = '<div class="cart-empty">Ton panier est vide.</div>';
+  } else {
+    list.innerHTML = [...cart.entries()].map(([key,it])=>`
+      <div class="cart-row" data-key="${key}">
+        <div class="cart-row-name">${it.name}</div>
+        <button class="cart-row-remove" data-action="remove" title="Retirer">✕</button>
+        <div class="cart-row-ctrl">
+          <button class="qty-btn" data-action="dec">−</button>
+          <span class="qty-val">${it.qty}</span>
+          <button class="qty-btn" data-action="inc">+</button>
+        </div>
+        <div class="cart-row-price">${fmt(it.price*it.qty)} SW</div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.cart-row').forEach(row=>{
+      const key = row.dataset.key;
+      row.querySelector('[data-action="dec"]').addEventListener('click', ()=>changeQty(key,-1));
+      row.querySelector('[data-action="inc"]').addEventListener('click', ()=>changeQty(key,1));
+      row.querySelector('[data-action="remove"]').addEventListener('click', ()=>removeFromCart(key));
+    });
+  }
+
+  refreshCardStates();
+}
+
+/* ---------------- CART DRAWER ---------------- */
+const cartFab = document.getElementById('cartFab');
+const cartDrawer = document.getElementById('cartDrawer');
+const cartOverlay = document.getElementById('cartOverlay');
+
+function openCart(){ cartDrawer.classList.add('open'); cartOverlay.classList.add('show'); }
+function closeCart(){ cartDrawer.classList.remove('open'); cartOverlay.classList.remove('show'); }
+
+cartFab.addEventListener('click', openCart);
+cartFoot.addEventListener('click', openCart);
+document.getElementById('cartCloseBtn').addEventListener('click', closeCart);
+cartOverlay.addEventListener('click', closeCart);
+document.getElementById('cartClearBtn').addEventListener('click', clearCart);
+document.getElementById('cartCheckoutBtn').addEventListener('click', checkout);
+
+/* ---------------- CHECKOUT (déduction Coins + alerte Discord) ---------------- */
+async function checkout(){
+  const msg = document.getElementById('cartMsg');
+  const btn = document.getElementById('cartCheckoutBtn');
+  msg.style.color = '';
+  msg.textContent = '';
+
+  if(cart.size===0){
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Ton panier est vide.';
+    return;
+  }
+  if(!CURRENT_SHOP_CODE){
+    msg.style.color = 'var(--red)';
+    msg.textContent = "Code boutique introuvable, recharge la page et réessaie.";
+    return;
+  }
+
+  const total = cartTotalCoins();
+  const itemsSnapshot = [...cart.entries()].map(([key,it])=>({...it}));
+
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Traitement...';
+
+  try{
+    const ref = db.collection('shopCodes').doc(CURRENT_SHOP_CODE);
+
+    // Transaction Firestore : on relit le solde au moment du paiement et on ne débite
+    // que si le solde est suffisant, pour éviter tout achat au-delà du solde réel.
+    await db.runTransaction(async (tx)=>{
+      const snap = await tx.get(ref);
+      const coins = snap.exists ? (snap.data().coins||0) : 0;
+      if(coins < total){
+        throw new Error('INSUFFICIENT_FUNDS');
+      }
+      tx.update(ref, { coins: firebase.firestore.FieldValue.increment(-total) });
+    });
+
+    // Paiement confirmé : on vide le panier et on prévient sur Discord
+    clearCart();
+    msg.style.color = 'var(--green)';
+    msg.textContent = `Achat confirmé ! ${fmt(total)} Coins débités.`;
+
+    notifyDiscord(itemsSnapshot, total).catch(err=>{
+      console.error('Alerte Discord non envoyée :', err);
+    });
+
+  } catch(err){
+    console.error(err);
+    msg.style.color = 'var(--red)';
+    if(err.message === 'INSUFFICIENT_FUNDS'){
+      msg.textContent = "Solde insuffisant pour valider ce panier.";
+    } else {
+      msg.textContent = "Erreur lors du paiement, réessaie.";
+    }
+  } finally {
+    btn.disabled = cart.size===0;
+    btn.textContent = originalLabel;
+  }
+}
+
+async function notifyDiscord(items, total){
+  if(!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes('METS_TON_ID')){
+    console.warn('Webhook Discord non configuré : ajoute ton URL dans DISCORD_WEBHOOK_URL.');
+    return;
+  }
+
+  const lines = items.map(it => `• ${it.name} x${it.qty} — ${fmt(it.price*it.qty)} Coins`);
+
+  const embed = {
+    title: '🛒 Nouvelle commande — SouthCoins RP',
+    color: 0xA855F7,
+    fields: [
+      { name: 'Code boutique', value: `\`${CURRENT_SHOP_CODE}\``, inline: true },
+      { name: 'Total débité', value: `${fmt(total)} Coins`, inline: true },
+      { name: `Articles (${items.length})`, value: lines.join('\n') || '—' }
+    ],
+    timestamp: new Date().toISOString()
+  };
+
+  await fetch(DISCORD_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embeds: [embed] })
+  });
 }
 
 function animateNumber(el, target){
@@ -752,6 +1070,7 @@ function animateNumber(el, target){
 }
 
 renderBento();
+updateCartUI();
 </script>
 
 </body>
