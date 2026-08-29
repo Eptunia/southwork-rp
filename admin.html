@@ -226,9 +226,10 @@
       </div>
     </div>
 
-    <label>Montant à ajouter</label>
+    <label>Montant (ajout ou retrait)</label>
     <input type="number" id="amountInput" placeholder="500" min="1" step="1">
     <button id="addBtn">Ajouter les Coins</button>
+    <button class="secondary" id="removeBtn">Retirer les Coins</button>
     <button class="secondary" id="logoutBtn">Se déconnecter</button>
     <div class="msg" id="adminMsg"></div>
   </div>
@@ -398,6 +399,34 @@
       document.getElementById('amountInput').value = '';
     } catch(err){
       showMsg(adminMsg, "Erreur lors de l'ajout : " + err.message, false);
+    }
+  });
+
+  document.getElementById('removeBtn').addEventListener('click', async ()=>{
+    const amount = parseInt(document.getElementById('amountInput').value, 10);
+    if(!verifiedCode){
+      showMsg(adminMsg, "Vérifie d'abord un code boutique valide.", false);
+      return;
+    }
+    if(!amount || amount <= 0){
+      showMsg(adminMsg, "Entre un montant valide.", false);
+      return;
+    }
+    try{
+      const ref = db.collection('shopCodes').doc(verifiedCode);
+      const snap = await ref.get();
+      const current = (snap.data() && snap.data().coins) || 0;
+      if(amount > current){
+        showMsg(adminMsg, `Retrait refusé : le solde actuel (${current.toLocaleString('fr-FR')}) est inférieur au montant demandé.`, false);
+        return;
+      }
+      await ref.update({ coins: firebase.firestore.FieldValue.increment(-amount) });
+      const snap2 = await ref.get();
+      currentBalance.textContent = (snap2.data().coins||0).toLocaleString('fr-FR');
+      showMsg(adminMsg, `${amount.toLocaleString('fr-FR')} Coins retirés au code ${verifiedCode}.`, true);
+      document.getElementById('amountInput').value = '';
+    } catch(err){
+      showMsg(adminMsg, "Erreur lors du retrait : " + err.message, false);
     }
   });
 
