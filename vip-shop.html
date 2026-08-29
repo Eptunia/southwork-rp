@@ -237,7 +237,7 @@
   /* ---------------- TRUST BAR ---------------- */
   .trust-bar{
     display:grid;
-    grid-template-columns:repeat(4, 1fr);
+    grid-template-columns:repeat(3, 1fr);
     gap:20px;
     background:var(--panel);
     border:1px solid var(--line);
@@ -344,6 +344,8 @@
     transition:transform .3s cubic-bezier(.2,.8,.3,1);
   }
   .card:hover .card-art img.item-photo{ transform:scale(1.08); }
+  .card-art.banner{ height:auto; aspect-ratio:1591/1067; }
+  .card-art.banner img.item-photo{ object-fit:cover; padding:0; }
 
   .rarity-tag{
     position:absolute; top:8px; left:8px;
@@ -551,6 +553,53 @@
   .pseudo-modal button:hover{ filter:brightness(1.12); box-shadow:0 0 18px rgba(168,85,247,.4); }
   .pseudo-modal button:disabled{ opacity:.5; cursor:not-allowed; }
   .pseudo-modal .err{ color:var(--red); font-size:12.5px; margin-top:10px; min-height:14px; }
+
+  /* ---------------- MODALE DETAIL ARTICLE (contenu du pack) ---------------- */
+  .item-overlay{
+    position:fixed; inset:0; z-index:210;
+    background:rgba(0,0,0,.7); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .item-overlay.show{ opacity:1; pointer-events:auto; }
+  .item-modal{
+    width:100%; max-width:520px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.6);
+  }
+  .item-modal-close{
+    position:absolute; top:14px; right:14px;
+    width:32px; height:32px; border-radius:8px;
+    background:rgba(0,0,0,.5); border:1px solid var(--line); color:#fff;
+    cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center;
+    z-index:2;
+  }
+  .item-modal-close:hover{ border-color:var(--red); color:var(--red); }
+  .item-modal-img-wrap{ position:relative; background:var(--bg); aspect-ratio:1591/1067; overflow:hidden; }
+  .item-modal-img-wrap img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .item-modal-body{ padding:22px 24px 24px; }
+  .item-modal-body h3{ font-family:'Poppins',sans-serif; font-size:20px; font-weight:800; margin-bottom:6px; }
+  .item-modal-price{ color:var(--gold-bright); font-weight:800; font-size:16px; margin-bottom:16px; }
+  .item-modal-desc{ color:var(--dim); font-size:13.5px; line-height:1.55; margin-bottom:20px; }
+  .item-modal-desc ul{ list-style:none; display:flex; flex-direction:column; gap:9px; }
+  .item-modal-desc li{
+    display:flex; align-items:center; gap:10px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; color:var(--text); font-size:13.5px; font-weight:600;
+  }
+  .item-modal-desc li::before{
+    content:''; flex-shrink:0; width:8px; height:8px; border-radius:50%;
+    background:var(--violet-bright); box-shadow:0 0 8px rgba(168,85,247,.7);
+  }
+  .item-modal-add{
+    width:100%; background:var(--violet); border:none; color:#fff;
+    font-weight:800; font-size:14.5px; padding:13px 20px; border-radius:10px;
+    cursor:pointer; transition:all .18s ease;
+  }
+  .item-modal-add:hover{ filter:brightness(1.12); box-shadow:0 0 18px rgba(168,85,247,.4); }
 </style>
 </head>
 <body>
@@ -564,6 +613,22 @@
     <input type="text" id="pseudoInput" placeholder="TonPseudo#0000" autocomplete="off" maxlength="60">
     <button id="pseudoSubmitBtn">Continuer</button>
     <div class="err" id="pseudoErr"></div>
+  </div>
+</div>
+
+<!-- ============ MODALE : détail article (contenu du pack) ============ -->
+<div class="item-overlay" id="itemOverlay">
+  <div class="item-modal">
+    <div class="item-modal-img-wrap">
+      <button class="item-modal-close" id="itemModalClose">✕</button>
+      <img id="itemModalImg" src="" alt="">
+    </div>
+    <div class="item-modal-body">
+      <h3 id="itemModalName"></h3>
+      <div class="item-modal-price"><span class="coin">SW</span><span id="itemModalPrice"></span></div>
+      <div class="item-modal-desc" id="itemModalDesc"></div>
+      <button class="item-modal-add" id="itemModalAddBtn">Ajouter au panier</button>
+    </div>
   </div>
 </div>
 
@@ -594,10 +659,9 @@
         <div class="code-hint">Donne ce code à l'admin pour recevoir des Coins</div>
       </div>
       <div class="card-box">
-        <label>Code / Identifiant de paiement Tebex</label>
+        <label>Paiement</label>
         <div class="redeem-row">
-          <input type="text" placeholder="tbx-xxxxxxxxxxxx" />
-          <button class="redeem-btn">Valider</button>
+          <a class="redeem-btn" href="https://paypal.me/SOSMimine" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">Payer via PayPal</a>
         </div>
       </div>
     </div>
@@ -623,12 +687,6 @@
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 26v-5a16 16 0 0 1 32 0v5"/><rect x="5" y="24" width="9" height="13" rx="3.5"/><rect x="34" y="24" width="9" height="13" rx="3.5"/><path d="M43 37v2a6 6 0 0 1-6 6h-6"/></svg>
       </div>
       <div><div class="trust-title">Support actif</div><div class="trust-sub">Notre équipe est là pour vous aider</div></div>
-    </div>
-    <div class="trust-item">
-      <div class="trust-icon" style="color:var(--gold-bright)">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 4l4.6 3.6 5.8-1 2 5.6 5.6 2-1 5.8L44.6 24 41 28.6l1 5.8-5.6 2-2 5.6-5.8-1L24 45l-4.6-4.6-5.8 1-2-5.6-5.6-2 1-5.8L3.4 24 7 19.4l-1-5.8 5.6-2 2-5.6 5.8 1z"/><path d="M16.5 24.5l5 5 10-11"/></svg>
-      </div>
-      <div><div class="trust-title">Fiable &amp; digne de confiance</div><div class="trust-sub">Plus de 1000 joueurs satisfaits</div></div>
     </div>
   </div>
 
@@ -895,10 +953,29 @@ const ITEMS = {
     {name:'Insurgent', price:4800, icon:ICONS.suv, image:'images/insurgent.png'},
   ],
   packs:[
-    {name:'Pack Débutant', price:3000, icon:ICONS.gem, rarity:'Basique'},
-    {name:'Pack Hustler', price:8500, icon:ICONS.gem, rarity:'Rare'},
-    {name:'Pack Kingpin', price:19000, icon:ICONS.gem, rarity:'Épique'},
-    {name:'Pack Cartel', price:42000, icon:ICONS.gem, rarity:'Légendaire'},
+    {name:'Pack Débutant', price:3400, icon:ICONS.gem, image:'images/pack-debutant.png', descriptionList:[
+      '80 000$ argent banque',
+      'Arme perm : Calibre 50',
+      'Véhicule perm : Elegy RH8 (no custom)',
+    ]},
+    {name:'Pack Criminel', price:6500, icon:ICONS.gem, image:'images/pack-criminel.png', descriptionList:[
+      '50 000$ argent sale',
+      'Arme perm : AK Compact',
+      'Véhicule perm : Jugular',
+      'Véhicule perm : Kanis Kamacho',
+    ]},
+    {name:'Pack Kawai', price:8500, icon:ICONS.gem, image:'images/pack-kawai.png', descriptionList:[
+      '80 000$ argent propre',
+      'x1 Jetons full custom',
+      'Arme perm : Fusil Lourd full custom',
+      'Véhicule perm : Sentinel XL',
+    ]},
+    {name:'Pack Apex', price:14000, icon:ICONS.gem, image:'images/pack-apex.png', descriptionList:[
+      'Propriété gratuite 20 slots',
+      'Arme perm : G36 MKII full custom',
+      'Véhicule perm : Krigger',
+      'Véhicule perm : Toros',
+    ]},
   ],
 };
 
@@ -959,7 +1036,7 @@ function openCategory(catId){
     const inCart = cart.get(key);
     return `
     <div class="card ${inCart?'selected':''}" style="--c:var(${cat.accent}); animation-delay:${i*0.04}s" data-key="${key}">
-      <div class="card-art">
+      <div class="card-art ${it.descriptionList?'banner':''}">
         ${it.rarity?`<span class="rarity-tag">${it.rarity}</span>`:''}
         ${it.image?`<img class="item-photo" src="${it.image}" alt="${it.name}">`:it.icon}
       </div>
@@ -973,7 +1050,10 @@ function openCategory(catId){
 
   itemGrid.querySelectorAll('.card').forEach((card, idx)=>{
     const it = list[idx];
-    card.addEventListener('click', ()=> addToCart(catId, it));
+    card.addEventListener('click', ()=>{
+      if(it.description || it.descriptionList){ openItemModal(catId, it); }
+      else { addToCart(catId, it); }
+    });
     card.querySelector('.buy-btn').addEventListener('click', (e)=>{ e.stopPropagation(); addToCart(catId, it); });
   });
 
@@ -985,6 +1065,33 @@ backBtn.addEventListener('click', ()=>{
   bento.classList.remove('hidden');
   trustBar.classList.remove('hidden');
 });
+
+/* ---------------- MODALE DETAIL ARTICLE ---------------- */
+const itemOverlay = document.getElementById('itemOverlay');
+const itemModalImg = document.getElementById('itemModalImg');
+const itemModalName = document.getElementById('itemModalName');
+const itemModalPrice = document.getElementById('itemModalPrice');
+const itemModalDesc = document.getElementById('itemModalDesc');
+const itemModalAddBtn = document.getElementById('itemModalAddBtn');
+const itemModalClose = document.getElementById('itemModalClose');
+
+function openItemModal(catId, item){
+  itemModalImg.src = item.image || '';
+  itemModalImg.alt = item.name;
+  itemModalName.textContent = item.name;
+  itemModalPrice.textContent = fmt(item.price);
+  if(item.descriptionList){
+    itemModalDesc.innerHTML = '<ul>' + item.descriptionList.map(line=>`<li>${line}</li>`).join('') + '</ul>';
+  } else {
+    itemModalDesc.textContent = item.description || '';
+  }
+  itemModalAddBtn.onclick = ()=>{ addToCart(catId, item); closeItemModal(); };
+  itemOverlay.classList.add('show');
+}
+function closeItemModal(){ itemOverlay.classList.remove('show'); }
+
+itemModalClose.addEventListener('click', closeItemModal);
+itemOverlay.addEventListener('click', (e)=>{ if(e.target === itemOverlay) closeItemModal(); });
 
 /* ---------------- CART LOGIC ---------------- */
 function addToCart(catId, item){
