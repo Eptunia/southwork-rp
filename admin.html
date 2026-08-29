@@ -168,6 +168,25 @@
   }
   .crate-rows-head span:last-child{ width:34px; }
   #crateAddRowBtn{ margin-top:14px; }
+
+  /* ---------------- UPLOAD IMAGE (lots des caisses) ---------------- */
+  .c-image-cell{
+    display:flex; align-items:center; gap:8px;
+  }
+  .c-image-thumb{
+    width:34px; height:34px; border-radius:8px; object-fit:cover;
+    border:1px solid var(--line); background:var(--bg); flex-shrink:0;
+    display:none;
+  }
+  .c-image-thumb.show{ display:block; }
+  .c-image-upload-btn{
+    width:auto; margin:0; padding:9px 10px; font-size:12px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--dim);
+    flex-shrink:0; white-space:nowrap;
+  }
+  .c-image-upload-btn:hover{ color:var(--text); border-color:var(--violet); box-shadow:none; }
+  .c-image-upload-btn.uploading{ opacity:.6; pointer-events:none; }
+  .c-image-file{ display:none; }
 </style>
 </head>
 <body>
@@ -230,7 +249,7 @@
   </select>
 
   <div class="crate-rows-head">
-    <span>Nom du lot</span><span>URL image</span><span>Rareté</span><span>Poids</span><span></span>
+    <span>Nom du lot</span><span>Image</span><span>Rareté</span><span>Poids</span><span></span>
   </div>
   <div id="crateRows"></div>
   <button class="secondary" id="crateAddRowBtn">+ Ajouter un lot</button>
@@ -241,6 +260,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script>
   const loginBox = document.getElementById('loginBox');
@@ -396,14 +416,30 @@
   function crateRowHTML(item){
     item = item || {};
     const rarityOptions = RARITIES.map(r=>`<option value="${r}" ${item.rarity===r?'selected':''}>${r}</option>`).join('');
+    const imgUrl = item.image ? item.image.replace(/"/g,'&quot;') : '';
     return `
       <div class="crate-row">
         <input type="text" class="c-name" placeholder="Nom du lot" value="${item.name ? item.name.replace(/"/g,'&quot;') : ''}">
-        <input type="text" class="c-image" placeholder="https://..." value="${item.image ? item.image.replace(/"/g,'&quot;') : ''}">
+        <div class="c-image-cell">
+          <img class="c-image-thumb ${imgUrl ? 'show' : ''}" src="${imgUrl}">
+          <input type="hidden" class="c-image" value="${imgUrl}">
+          <input type="file" class="c-image-file" accept="image/*">
+          <button type="button" class="c-image-upload-btn">Choisir image</button>
+        </div>
         <select class="c-rarity">${rarityOptions}</select>
         <input type="number" class="c-weight" min="1" step="1" placeholder="1" value="${item.weight || 1}">
         <button type="button" class="rm-btn" title="Retirer">✕</button>
       </div>`;
+  }
+
+  // Upload d'un fichier image vers Firebase Storage (dossier crateImages/) et
+  // renvoie l'URL de téléchargement à stocker dans Firestore (champ item.image).
+  async function uploadCrateImage(file, row){
+    const storage = firebase.storage();
+    const safeName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const ref = storage.ref().child('crateImages/' + safeName);
+    const snap = await ref.put(file);
+    return await snap.ref.getDownloadURL();
   }
 
   function addCrateRow(item){
@@ -411,6 +447,39 @@
     wrap.innerHTML = crateRowHTML(item);
     const row = wrap.firstElementChild;
     row.querySelector('.rm-btn').addEventListener('click', ()=> row.remove());
+
+    const fileInput = row.querySelector('.c-image-file');
+    const uploadBtn = row.querySelector('.c-image-upload-btn');
+    const hiddenUrl = row.querySelector('.c-image');
+    const thumb = row.querySelector('.c-image-thumb');
+
+    uploadBtn.addEventListener('click', ()=> fileInput.click());
+
+    fileInput.addEventListener('change', async ()=>{
+      const file = fileInput.files[0];
+      if(!file) return;
+      uploadBtn.classList.add('uploading');
+      uploadBtn.textContent = 'Envoi...';
+      try{
+        const url = await uploadCrateImage(file, row);
+        hiddenUrl.value = url;
+        thumb.src = url;
+        thumb.classList.add('show');
+        uploadBtn.textContent = 'Changer';
+      } catch(err){
+        console.error(err);
+        showMsg(crateMsg, "Erreur d'envoi de l'image : " + err.message, false);
+        uploadBtn.textContent = 'Choisir image';
+      } finally {
+        uploadBtn.classList.remove('uploading');
+        fileInput.value = '';
+      }
+    });
+
+    if(hiddenUrl.value){
+      uploadBtn.textContent = 'Changer';
+    }
+
     crateRows.appendChild(row);
   }
 
@@ -436,6 +505,10 @@
   crateAddRowBtn.addEventListener('click', ()=> addCrateRow());
 
   crateSaveBtn.addEventListener('click', async ()=>{
+    if(crateRows.querySelector('.c-image-upload-btn.uploading')){
+      showMsg(crateMsg, "Attends la fin de l'envoi de l'image avant d'enregistrer.", false);
+      return;
+    }
     const items = [...crateRows.querySelectorAll('.crate-row')].map(row=>({
       name: row.querySelector('.c-name').value.trim(),
       image: row.querySelector('.c-image').value.trim(),
