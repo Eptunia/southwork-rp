@@ -139,6 +139,35 @@
   #logoutBtn{ display:none; }
 
   .hidden{ display:none !important; }
+
+  /* ---------------- CONFIG DES CAISSES (lots + probabilités) ---------------- */
+  .crate-panel{ max-width:640px; margin-top:20px; }
+  .crate-panel label:first-of-type{ margin-top:0; }
+  .crate-row{
+    display:grid;
+    grid-template-columns: 1.4fr 1.6fr 1fr 0.7fr auto;
+    gap:8px;
+    align-items:center;
+    margin-top:10px;
+  }
+  .crate-row input, .crate-row select{
+    padding:9px 10px; font-size:13px;
+  }
+  .crate-row .rm-btn{
+    width:34px; height:34px; margin:0; padding:0;
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    border-radius:8px; font-size:14px; flex-shrink:0;
+  }
+  .crate-row .rm-btn:hover{ border-color:var(--red); color:var(--red); box-shadow:none; }
+  .crate-rows-head{
+    display:grid;
+    grid-template-columns: 1.4fr 1.6fr 1fr 0.7fr auto;
+    gap:8px;
+    margin-top:18px;
+    font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); font-weight:700;
+  }
+  .crate-rows-head span:last-child{ width:34px; }
+  #crateAddRowBtn{ margin-top:14px; }
 </style>
 </head>
 <body>
@@ -184,6 +213,29 @@
     <button class="secondary" id="logoutBtn">Se déconnecter</button>
     <div class="msg" id="adminMsg"></div>
   </div>
+</div>
+
+<!-- ---------- CONFIG DES CAISSES (lots tirés au sort côté boutique) ---------- -->
+<div class="panel crate-panel hidden" id="cratePanel">
+  <h1><span class="vip">Config</span> des Caisses</h1>
+  <div class="sub">Défini les lots possibles de chaque caisse et leur poids de tirage (plus le poids est élevé, plus le lot a de chances de sortir).</div>
+
+  <label>Caisse à configurer</label>
+  <select id="crateSelect">
+    <option value="bronze">Caisse Bronze</option>
+    <option value="argent">Caisse Argent</option>
+    <option value="gold">Caisse Gold</option>
+    <option value="diamant">Caisse Diamant</option>
+    <option value="ultime">Caisse Ultime</option>
+  </select>
+
+  <div class="crate-rows-head">
+    <span>Nom du lot</span><span>URL image</span><span>Rareté</span><span>Poids</span><span></span>
+  </div>
+  <div id="crateRows"></div>
+  <button class="secondary" id="crateAddRowBtn">+ Ajouter un lot</button>
+  <button id="crateSaveBtn">Enregistrer les lots</button>
+  <div class="msg" id="crateMsg"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -234,6 +286,9 @@
         const d = doc.data();
         const items = (d.items||[]).map(it => `${it.name} x${it.qty}`).join(', ') || '—';
         const total = (d.total||0).toLocaleString('fr-FR');
+        const crateLine = d.crate
+          ? `<div class="h-items">🎁 Caisse ouverte : lot obtenu — <strong>${d.crate.reward}</strong>${d.crate.rarity ? ` (${d.crate.rarity})` : ''}</div>`
+          : '';
         return `
           <div class="history-item">
             <div class="h-top">
@@ -241,6 +296,7 @@
               <span class="h-total">${total} Coins</span>
             </div>
             <div class="h-items">${items}</div>
+            ${crateLine}
           </div>`;
       }).join('');
     } catch(err){
@@ -253,10 +309,13 @@
     if(user){
       loginBox.classList.add('hidden');
       adminBox.classList.remove('hidden');
+      cratePanel.classList.remove('hidden');
       document.getElementById('logoutBtn').style.display = 'block';
+      loadCrateConfig(crateSelect.value);
     } else {
       loginBox.classList.remove('hidden');
       adminBox.classList.add('hidden');
+      cratePanel.classList.add('hidden');
     }
   });
 
@@ -319,6 +378,87 @@
       document.getElementById('amountInput').value = '';
     } catch(err){
       showMsg(adminMsg, "Erreur lors de l'ajout : " + err.message, false);
+    }
+  });
+
+  /* ---------------- CONFIG DES CAISSES ---------------- */
+  // Stockage Firestore : crateConfigs/{crateId}.items = [{name, image, rarity, weight}, ...]
+  // Lu par vip-shop.html au moment où un joueur ouvre une caisse.
+  const cratePanel = document.getElementById('cratePanel');
+  const crateSelect = document.getElementById('crateSelect');
+  const crateRows = document.getElementById('crateRows');
+  const crateAddRowBtn = document.getElementById('crateAddRowBtn');
+  const crateSaveBtn = document.getElementById('crateSaveBtn');
+  const crateMsg = document.getElementById('crateMsg');
+
+  const RARITIES = ['Commune','Rare','Épique','Légendaire','Mythique'];
+
+  function crateRowHTML(item){
+    item = item || {};
+    const rarityOptions = RARITIES.map(r=>`<option value="${r}" ${item.rarity===r?'selected':''}>${r}</option>`).join('');
+    return `
+      <div class="crate-row">
+        <input type="text" class="c-name" placeholder="Nom du lot" value="${item.name ? item.name.replace(/"/g,'&quot;') : ''}">
+        <input type="text" class="c-image" placeholder="https://..." value="${item.image ? item.image.replace(/"/g,'&quot;') : ''}">
+        <select class="c-rarity">${rarityOptions}</select>
+        <input type="number" class="c-weight" min="1" step="1" placeholder="1" value="${item.weight || 1}">
+        <button type="button" class="rm-btn" title="Retirer">✕</button>
+      </div>`;
+  }
+
+  function addCrateRow(item){
+    const wrap = document.createElement('div');
+    wrap.innerHTML = crateRowHTML(item);
+    const row = wrap.firstElementChild;
+    row.querySelector('.rm-btn').addEventListener('click', ()=> row.remove());
+    crateRows.appendChild(row);
+  }
+
+  async function loadCrateConfig(crateId){
+    crateMsg.className = 'msg';
+    crateRows.innerHTML = '<div class="history-empty">Chargement...</div>';
+    try{
+      const snap = await db.collection('crateConfigs').doc(crateId).get();
+      const items = snap.exists ? (snap.data().items || []) : [];
+      crateRows.innerHTML = '';
+      if(items.length === 0){
+        addCrateRow(); // au moins une ligne vierge pour démarrer
+      } else {
+        items.forEach(it => addCrateRow(it));
+      }
+    } catch(err){
+      crateRows.innerHTML = '';
+      showMsg(crateMsg, "Erreur de chargement : " + err.message, false);
+    }
+  }
+
+  crateSelect.addEventListener('change', ()=> loadCrateConfig(crateSelect.value));
+  crateAddRowBtn.addEventListener('click', ()=> addCrateRow());
+
+  crateSaveBtn.addEventListener('click', async ()=>{
+    const items = [...crateRows.querySelectorAll('.crate-row')].map(row=>({
+      name: row.querySelector('.c-name').value.trim(),
+      image: row.querySelector('.c-image').value.trim(),
+      rarity: row.querySelector('.c-rarity').value,
+      weight: Math.max(1, parseInt(row.querySelector('.c-weight').value, 10) || 1),
+    })).filter(it => it.name);
+
+    if(items.length === 0){
+      showMsg(crateMsg, "Ajoute au moins un lot avec un nom avant d'enregistrer.", false);
+      return;
+    }
+
+    crateSaveBtn.disabled = true;
+    try{
+      await db.collection('crateConfigs').doc(crateSelect.value).set({
+        items,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showMsg(crateMsg, `${items.length} lot(s) enregistré(s) pour cette caisse.`, true);
+    } catch(err){
+      showMsg(crateMsg, "Erreur lors de l'enregistrement : " + err.message, false);
+    } finally {
+      crateSaveBtn.disabled = false;
     }
   });
 </script>

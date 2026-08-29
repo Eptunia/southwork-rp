@@ -600,6 +600,106 @@
     cursor:pointer; transition:all .18s ease;
   }
   .item-modal-add:hover{ filter:brightness(1.12); box-shadow:0 0 18px rgba(168,85,247,.4); }
+
+  /* ---------------- MODALE OUVERTURE DE CAISSE (roulette style CS:GO) ---------------- */
+  .crate-overlay{
+    position:fixed; inset:0; z-index:230;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .crate-overlay.show{ opacity:1; pointer-events:auto; }
+  .crate-modal{
+    position:relative;
+    width:100%; max-width:720px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:28px 26px 24px;
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.65);
+  }
+  .crate-modal-close{
+    position:absolute; top:14px; right:14px;
+    width:32px; height:32px; border-radius:8px;
+    background:rgba(0,0,0,.5); border:1px solid var(--line); color:#fff;
+    cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center;
+  }
+  .crate-modal-close:hover{ border-color:var(--red); color:var(--red); }
+  .crate-modal h3{ font-family:'Poppins',sans-serif; font-size:22px; font-weight:800; padding-right:36px; }
+  .crate-modal-sub{ color:var(--dim); font-size:13px; margin-top:4px; margin-bottom:20px; }
+
+  .crate-roulette-wrap{
+    position:relative;
+    height:150px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    margin-bottom:20px;
+    display:none;
+  }
+  .crate-roulette-wrap.show-track{ display:block; }
+  .crate-roulette-wrap::before, .crate-roulette-wrap::after{
+    content:''; position:absolute; top:0; bottom:0; width:60px; z-index:2; pointer-events:none;
+  }
+  .crate-roulette-wrap::before{ left:0; background:linear-gradient(90deg, var(--bg), transparent); }
+  .crate-roulette-wrap::after{ right:0; background:linear-gradient(270deg, var(--bg), transparent); }
+  .crate-pointer{
+    position:absolute; left:50%; top:0; bottom:0; width:3px; z-index:3;
+    background:var(--gold-bright); box-shadow:0 0 12px rgba(240,180,41,.8);
+    transform:translateX(-50%);
+  }
+  .crate-pointer::before, .crate-pointer::after{
+    content:''; position:absolute; left:50%; transform:translateX(-50%);
+    border:7px solid transparent;
+  }
+  .crate-pointer::before{ top:-1px; border-top:9px solid var(--gold-bright); }
+  .crate-pointer::after{ bottom:-1px; border-bottom:9px solid var(--gold-bright); }
+  .crate-roulette-track{
+    display:flex; align-items:center; gap:10px;
+    height:100%; padding:0 10px; will-change:transform;
+  }
+  .crate-cell{
+    --rc: var(--violet);
+    flex:0 0 auto; width:118px; height:118px;
+    background:var(--panel-2);
+    border:1.5px solid var(--rc);
+    border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    padding:8px;
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--rc) 25%, transparent) inset;
+  }
+  .crate-cell img{ max-width:70px; max-height:60px; object-fit:contain; }
+  .crate-cell-name{
+    font-size:10.5px; font-weight:700; text-align:center; color:var(--text);
+    line-height:1.25; max-height:26px; overflow:hidden;
+  }
+
+  .crate-result{ text-align:center; margin-bottom:20px; }
+  .crate-result.hidden{ display:none; }
+  .crate-result-label{ color:var(--dim); font-size:12.5px; text-transform:uppercase; letter-spacing:1.2px; font-weight:700; margin-bottom:12px; }
+  .crate-result-item{
+    display:inline-flex; flex-direction:column; align-items:center; gap:8px;
+    background:var(--panel-2); border:1.5px solid var(--gold-bright);
+    border-radius:14px; padding:18px 26px;
+    box-shadow:0 0 24px rgba(240,180,41,.25);
+  }
+  .crate-result-item img{ max-width:90px; max-height:80px; object-fit:contain; }
+  .crate-result-name{ font-family:'Poppins',sans-serif; font-weight:800; font-size:15px; }
+  .crate-result-rarity{
+    --rc: var(--violet);
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--rc); border:1px solid var(--rc); border-radius:20px; padding:3px 10px;
+  }
+
+  .crate-open-btn{
+    width:100%; background:var(--gold); border:none; color:#1a1200;
+    font-weight:800; font-size:14.5px; padding:14px 20px; border-radius:10px;
+    cursor:pointer; transition:all .18s ease;
+  }
+  .crate-open-btn:hover{ filter:brightness(1.1); box-shadow:0 0 18px rgba(240,180,41,.4); }
+  .crate-open-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .crate-modal-msg{ margin-top:12px; font-size:13px; text-align:center; min-height:16px; }
 </style>
 </head>
 <body>
@@ -629,6 +729,28 @@
       <div class="item-modal-desc" id="itemModalDesc"></div>
       <button class="item-modal-add" id="itemModalAddBtn">Ajouter au panier</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ MODALE : ouverture de caisse (roulette) ============ -->
+<div class="crate-overlay" id="crateOverlay">
+  <div class="crate-modal">
+    <button class="crate-modal-close" id="crateModalClose">✕</button>
+    <h3 id="crateModalTitle"></h3>
+    <div class="crate-modal-sub" id="crateModalSub"></div>
+
+    <div class="crate-roulette-wrap" id="crateRouletteWrap">
+      <div class="crate-pointer"></div>
+      <div class="crate-roulette-track" id="crateRouletteTrack"></div>
+    </div>
+
+    <div class="crate-result hidden" id="crateResult">
+      <div class="crate-result-label">Tu as obtenu</div>
+      <div class="crate-result-item" id="crateResultItem"></div>
+    </div>
+
+    <button class="crate-open-btn" id="crateOpenBtn">Ouvrir pour <span id="crateOpenPrice"></span> Coins</button>
+    <div class="crate-modal-msg" id="crateModalMsg"></div>
   </div>
 </div>
 
@@ -931,11 +1053,11 @@ const ITEMS = {
     {name:'1 000 000$', price:5100, icon:ICONS.gem, image:'images/1000000.png'},
   ],
   cases:[
-    {name:'Caisse Bronze', price:850, icon:ICONS.crate, image:'images/caisse-bronze.png', rarity:'Commune'},
-    {name:'Caisse Argent', price:1250, icon:ICONS.crate, image:'images/caisse-argent.png', rarity:'Rare'},
-    {name:'Caisse Gold', price:1850, icon:ICONS.crate, image:'images/caisse-gold.png', rarity:'Épique'},
-    {name:'Caisse Diamant', price:2400, icon:ICONS.crate, image:'images/caisse-diamant.png', rarity:'Légendaire'},
-    {name:'Caisse Ultime', price:3200, icon:ICONS.crate, image:'images/caisse-ultime.png', rarity:'Mythique'},
+    {name:'Caisse Bronze', price:850, icon:ICONS.crate, image:'images/caisse-bronze.png', rarity:'Commune', crateId:'bronze'},
+    {name:'Caisse Argent', price:1250, icon:ICONS.crate, image:'images/caisse-argent.png', rarity:'Rare', crateId:'argent'},
+    {name:'Caisse Gold', price:1850, icon:ICONS.crate, image:'images/caisse-gold.png', rarity:'Épique', crateId:'gold'},
+    {name:'Caisse Diamant', price:2400, icon:ICONS.crate, image:'images/caisse-diamant.png', rarity:'Légendaire', crateId:'diamant'},
+    {name:'Caisse Ultime', price:3200, icon:ICONS.crate, image:'images/caisse-ultime.png', rarity:'Mythique', crateId:'ultime'},
   ],
   vehicles:[
     {name:'Thrax', price:1400, icon:ICONS.car, image:'images/thrax.png'},
@@ -1026,6 +1148,8 @@ function openCategory(catId){
   const list = ITEMS[catId];
   sectionCount.textContent = `${list.length} article${list.length!==1?'s':''}`;
 
+  const isCrateCat = catId === 'cases';
+
   itemGrid.innerHTML = list.map((it,i)=>{
     const key = catId+'|'+it.name;
     const inCart = cart.get(key);
@@ -1038,7 +1162,7 @@ function openCategory(catId){
       <div class="card-name">${it.name}</div>
       <div class="card-foot">
         <div class="price"><span class="coin">SW</span>${fmt(it.price)}</div>
-        <button class="buy-btn">${inCart?`Ajouté (${inCart.qty})`:'Ajouter'}</button>
+        <button class="buy-btn">${isCrateCat ? 'Ouvrir' : (inCart?`Ajouté (${inCart.qty})`:'Ajouter')}</button>
       </div>
     </div>`;
   }).join('');
@@ -1046,10 +1170,15 @@ function openCategory(catId){
   itemGrid.querySelectorAll('.card').forEach((card, idx)=>{
     const it = list[idx];
     card.addEventListener('click', ()=>{
-      if(it.description || it.descriptionList){ openItemModal(catId, it); }
+      if(isCrateCat){ openCrateModal(catId, it); }
+      else if(it.description || it.descriptionList){ openItemModal(catId, it); }
       else { addToCart(catId, it); }
     });
-    card.querySelector('.buy-btn').addEventListener('click', (e)=>{ e.stopPropagation(); addToCart(catId, it); });
+    card.querySelector('.buy-btn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(isCrateCat){ openCrateModal(catId, it); }
+      else { addToCart(catId, it); }
+    });
   });
 
   window.scrollTo({top: itemSection.offsetTop - 20, behavior:'smooth'});
@@ -1270,7 +1399,7 @@ async function checkout(){
   }
 }
 
-async function notifyDiscord(items, total){
+async function notifyDiscord(items, total, extraNote){
   if(!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes('METS_TON_ID')){
     console.warn('Webhook Discord non configuré : ajoute ton URL dans DISCORD_WEBHOOK_URL.');
     return;
@@ -1278,15 +1407,18 @@ async function notifyDiscord(items, total){
 
   const lines = items.map(it => `• ${it.name} x${it.qty} — ${fmt(it.price*it.qty)} Coins`);
 
+  const fields = [
+    { name: 'Joueur', value: CURRENT_PSEUDO ? CURRENT_PSEUDO : '—', inline: true },
+    { name: 'Code boutique', value: `\`${CURRENT_SHOP_CODE}\``, inline: true },
+    { name: 'Total débité', value: `${fmt(total)} Coins`, inline: true },
+    { name: `Articles (${items.length})`, value: lines.join('\n') || '—' }
+  ];
+  if(extraNote){ fields.push({ name: 'Résultat', value: extraNote }); }
+
   const embed = {
     title: '🛒 Nouvelle commande — SouthCoins RP',
     color: 0xA855F7,
-    fields: [
-      { name: 'Joueur', value: CURRENT_PSEUDO ? CURRENT_PSEUDO : '—', inline: true },
-      { name: 'Code boutique', value: `\`${CURRENT_SHOP_CODE}\``, inline: true },
-      { name: 'Total débité', value: `${fmt(total)} Coins`, inline: true },
-      { name: `Articles (${items.length})`, value: lines.join('\n') || '—' }
-    ],
+    fields,
     timestamp: new Date().toISOString()
   };
 
@@ -1296,6 +1428,191 @@ async function notifyDiscord(items, total){
     body: JSON.stringify({ embeds: [embed] })
   });
 }
+
+/* ---------------- OUVERTURE DE CAISSES (roulette style CS:GO/Rust) ---------------- */
+// Les lots de chaque caisse sont configurés depuis le panel admin et stockés dans
+// Firestore sous crateConfigs/{crateId}.items = [{name, image, rarity, weight}, ...]
+const crateOverlay = document.getElementById('crateOverlay');
+const crateModalClose = document.getElementById('crateModalClose');
+const crateModalTitle = document.getElementById('crateModalTitle');
+const crateModalSub = document.getElementById('crateModalSub');
+const crateRouletteWrap = document.getElementById('crateRouletteWrap');
+const crateRouletteTrack = document.getElementById('crateRouletteTrack');
+const crateResult = document.getElementById('crateResult');
+const crateResultItem = document.getElementById('crateResultItem');
+const crateOpenBtn = document.getElementById('crateOpenBtn');
+const crateOpenPrice = document.getElementById('crateOpenPrice');
+const crateModalMsg = document.getElementById('crateModalMsg');
+
+const RARITY_COLORS = {
+  'Commune':'#95949e', 'Rare':'#3b82f6', 'Épique':'#a855f7', 'Légendaire':'#f0b429', 'Mythique':'#ef4444'
+};
+
+let currentCrateItem = null;
+let crateBusy = false;
+
+function openCrateModal(catId, item){
+  if(crateBusy) return;
+  if(!CURRENT_SHOP_CODE){
+    crateModalMsg.style.color = 'var(--red)';
+  }
+  currentCrateItem = item;
+  crateModalTitle.textContent = item.name;
+  crateModalSub.textContent = (item.rarity ? item.rarity + ' — ' : '') + 'Ouvre la caisse et tente de remporter un lot au hasard !';
+  crateOpenPrice.textContent = fmt(item.price);
+  crateResult.classList.add('hidden');
+  crateRouletteWrap.classList.remove('show-track');
+  crateRouletteTrack.innerHTML = '';
+  crateRouletteTrack.style.transition = 'none';
+  crateRouletteTrack.style.transform = 'translateX(0)';
+  crateModalMsg.textContent = '';
+  crateModalMsg.style.color = '';
+  crateOpenBtn.style.display = 'block';
+  crateOpenBtn.disabled = false;
+  crateOverlay.classList.add('show');
+}
+
+function closeCrateModal(){
+  if(crateBusy) return;
+  crateOverlay.classList.remove('show');
+  currentCrateItem = null;
+}
+
+crateModalClose.addEventListener('click', closeCrateModal);
+crateOverlay.addEventListener('click', (e)=>{ if(e.target === crateOverlay) closeCrateModal(); });
+
+// Tirage pondéré : chaque lot a un poids (weight) défini par l'admin ; plus il est élevé,
+// plus le lot a de chances de sortir. Un poids absent ou invalide vaut 1 par défaut.
+function pickWeightedReward(items){
+  const weightOf = it => (Number(it.weight) > 0 ? Number(it.weight) : 1);
+  const total = items.reduce((s, it) => s + weightOf(it), 0);
+  let r = Math.random() * total;
+  for(const it of items){
+    const w = weightOf(it);
+    if(r < w) return it;
+    r -= w;
+  }
+  return items[items.length - 1];
+}
+
+// Construit la bande défilante avec des lots aléatoires, en plaçant le lot gagnant
+// à un index fixe vers la fin de la bande, comme pour une ouverture CS:GO/Rust.
+function buildRouletteTrack(items, winner){
+  const REEL_LENGTH = 44;
+  const WIN_INDEX = 36;
+  const reel = [];
+  for(let i = 0; i < REEL_LENGTH; i++){
+    reel.push(i === WIN_INDEX ? winner : items[Math.floor(Math.random() * items.length)]);
+  }
+  crateRouletteTrack.innerHTML = reel.map(it => {
+    const color = RARITY_COLORS[it.rarity] || 'var(--violet)';
+    return `
+      <div class="crate-cell" style="--rc:${color}">
+        ${it.image ? `<img src="${it.image}" alt="${it.name}">` : ''}
+        <div class="crate-cell-name">${it.name}</div>
+      </div>`;
+  }).join('');
+  return WIN_INDEX;
+}
+
+// Anime le défilement horizontal jusqu'à centrer le lot gagnant sous le repère doré.
+function animateRoulette(winIndex){
+  return new Promise(resolve => {
+    crateRouletteWrap.classList.add('show-track');
+    requestAnimationFrame(() => {
+      const cellEl = crateRouletteTrack.querySelector('.crate-cell');
+      const gap = 10;
+      const cellWidth = (cellEl ? cellEl.getBoundingClientRect().width : 118) + gap;
+      const wrapWidth = crateRouletteWrap.getBoundingClientRect().width;
+      const jitter = (Math.random() * 0.5 - 0.25) * cellWidth;
+      const target = (winIndex * cellWidth) - (wrapWidth / 2) + (cellWidth / 2) + jitter;
+      crateRouletteTrack.style.transition = 'transform 5.2s cubic-bezier(.09,.68,.15,1)';
+      crateRouletteTrack.style.transform = `translateX(-${target}px)`;
+      setTimeout(resolve, 5300);
+    });
+  });
+}
+
+crateOpenBtn.addEventListener('click', async () => {
+  if(!currentCrateItem || crateBusy) return;
+  const item = currentCrateItem;
+
+  if(!CURRENT_SHOP_CODE){
+    crateModalMsg.style.color = 'var(--red)';
+    crateModalMsg.textContent = "Code boutique introuvable, recharge la page et réessaie.";
+    return;
+  }
+
+  crateBusy = true;
+  crateOpenBtn.disabled = true;
+  crateModalMsg.style.color = '';
+  crateModalMsg.textContent = 'Chargement de la caisse...';
+
+  try{
+    const cfgSnap = await db.collection('crateConfigs').doc(item.crateId).get();
+    const rewardItems = cfgSnap.exists ? (cfgSnap.data().items || []) : [];
+    if(rewardItems.length === 0){
+      throw new Error('CRATE_NOT_CONFIGURED');
+    }
+    const winner = pickWeightedReward(rewardItems);
+
+    crateModalMsg.textContent = 'Paiement en cours...';
+
+    const ref = db.collection('shopCodes').doc(CURRENT_SHOP_CODE);
+    const purchaseRef = ref.collection('purchases').doc();
+
+    // Transaction Firestore : débite le prix de la caisse uniquement si le solde est
+    // suffisant, et enregistre l'achat + le lot obtenu dans l'historique de l'admin.
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const coins = snap.exists ? (snap.data().coins || 0) : 0;
+      if(coins < item.price){ throw new Error('INSUFFICIENT_FUNDS'); }
+      tx.update(ref, { coins: firebase.firestore.FieldValue.increment(-item.price) });
+      tx.set(purchaseRef, {
+        pseudo: CURRENT_PSEUDO || null,
+        items: [{ name: item.name, qty: 1, price: item.price }],
+        total: item.price,
+        crate: { crateId: item.crateId, name: item.name, reward: winner.name, rarity: winner.rarity || null },
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    crateModalMsg.textContent = '';
+    crateOpenBtn.style.display = 'none';
+
+    const winIndex = buildRouletteTrack(rewardItems, winner);
+    await animateRoulette(winIndex);
+
+    crateResultItem.innerHTML = `
+      ${winner.image ? `<img src="${winner.image}" alt="${winner.name}">` : ''}
+      <div class="crate-result-name">${winner.name}</div>
+      ${winner.rarity ? `<div class="crate-result-rarity" style="--rc:${RARITY_COLORS[winner.rarity] || 'var(--violet)'}">${winner.rarity}</div>` : ''}
+    `;
+    crateResult.classList.remove('hidden');
+
+    notifyDiscord(
+      [{ name: item.name, qty: 1, price: item.price }],
+      item.price,
+      `🎁 Lot obtenu : **${winner.name}**${winner.rarity ? ` (${winner.rarity})` : ''}`
+    ).catch(err => console.error('Alerte Discord non envoyée :', err));
+
+  } catch(err){
+    console.error(err);
+    crateModalMsg.style.color = 'var(--red)';
+    if(err.message === 'INSUFFICIENT_FUNDS'){
+      crateModalMsg.textContent = 'Solde insuffisant pour ouvrir cette caisse.';
+    } else if(err.message === 'CRATE_NOT_CONFIGURED'){
+      crateModalMsg.textContent = "Cette caisse n'a pas encore de lots configurés côté admin.";
+    } else if(err.code === 'permission-denied'){
+      crateModalMsg.textContent = "Action refusée (permissions Firestore).";
+    } else {
+      crateModalMsg.textContent = "Erreur : " + (err.code || err.message || 'inconnue');
+    }
+    crateOpenBtn.disabled = false;
+  } finally {
+    crateBusy = false;
+  }
+});
 
 function animateNumber(el, target){
   const start = parseInt((el.textContent||'0').replace(/,/g,''))||0;
