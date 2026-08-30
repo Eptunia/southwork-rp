@@ -238,7 +238,7 @@
 <!-- ---------- CONFIG DES CAISSES (lots tirés au sort côté boutique) ---------- -->
 <div class="panel crate-panel hidden" id="cratePanel">
   <h1><span class="vip">Config</span> des Caisses</h1>
-  <div class="sub">Défini les lots possibles de chaque caisse et leur poids de tirage (plus le poids est élevé, plus le lot a de chances de sortir).</div>
+  <div class="sub">Défini les lots possibles de chaque caisse. Le poids détermine les chances de sortir (plus il est élevé, plus le lot sort souvent) — il se règle automatiquement selon la rareté choisie, plus rare = plus dur à obtenir. Tu peux ensuite l'ajuster manuellement si besoin.</div>
 
   <label>Caisse à configurer</label>
   <select id="crateSelect">
@@ -254,9 +254,11 @@
   </div>
   <div id="crateRows"></div>
   <button class="secondary" id="crateAddRowBtn">+ Ajouter un lot</button>
+  <button class="secondary" id="crateRecalcWeightsBtn">🎲 Recalculer les poids selon la rareté</button>
   <button id="crateSaveBtn">Enregistrer les lots</button>
   <div class="msg" id="crateMsg"></div>
 </div>
+
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -442,10 +444,21 @@
 
   const RARITIES = ['Commune','Rare','Très Rare','Épique','Émeraude','Mythique','Légendaire','Ultime'];
 
+  // Poids suggéré selon la rareté : plus la rareté est élevée, plus le poids
+  // est faible, donc plus le lot a peu de chances de sortir au tirage.
+  // Sert à pré-remplir le champ "Poids" quand on choisit une rareté, et pour
+  // le bouton "Recalculer les poids selon la rareté".
+  const RARITY_WEIGHTS = {
+    'Commune':100, 'Rare':55, 'Très Rare':30, 'Épique':16,
+    'Émeraude':9, 'Mythique':5, 'Légendaire':2.5, 'Ultime':1
+  };
+
   function crateRowHTML(item){
     item = item || {};
     const rarityOptions = RARITIES.map(r=>`<option value="${r}" ${item.rarity===r?'selected':''}>${r}</option>`).join('');
     const imgUrl = item.image ? item.image.replace(/"/g,'&quot;') : '';
+    const defaultRarity = item.rarity || RARITIES[0];
+    const suggestedWeight = RARITY_WEIGHTS[defaultRarity] || 1;
     return `
       <div class="crate-row">
         <input type="text" class="c-name" placeholder="Nom du lot" value="${item.name ? item.name.replace(/"/g,'&quot;') : ''}">
@@ -456,7 +469,7 @@
           <button type="button" class="c-image-upload-btn">Choisir image</button>
         </div>
         <select class="c-rarity">${rarityOptions}</select>
-        <input type="number" class="c-weight" min="1" step="1" placeholder="1" value="${item.weight || 1}">
+        <input type="number" class="c-weight" min="0.5" step="0.5" placeholder="1" value="${item.weight || suggestedWeight}">
         <button type="button" class="rm-btn" title="Retirer">✕</button>
       </div>`;
   }
@@ -500,6 +513,12 @@
     wrap.innerHTML = crateRowHTML(item);
     const row = wrap.firstElementChild;
     row.querySelector('.rm-btn').addEventListener('click', ()=> row.remove());
+
+    // Quand l'admin choisit une rareté, le poids se met à jour automatiquement
+    // pour refléter la difficulté (plus c'est rare, plus le poids est faible).
+    row.querySelector('.c-rarity').addEventListener('change', (e)=>{
+      row.querySelector('.c-weight').value = RARITY_WEIGHTS[e.target.value] || 1;
+    });
 
     const fileInput = row.querySelector('.c-image-file');
     const uploadBtn = row.querySelector('.c-image-upload-btn');
@@ -557,6 +576,17 @@
   crateSelect.addEventListener('change', ()=> loadCrateConfig(crateSelect.value));
   crateAddRowBtn.addEventListener('click', ()=> addCrateRow());
 
+  const crateRecalcWeightsBtn = document.getElementById('crateRecalcWeightsBtn');
+  crateRecalcWeightsBtn.addEventListener('click', ()=>{
+    const rows = [...crateRows.querySelectorAll('.crate-row')];
+    if(rows.length === 0) return;
+    rows.forEach(row=>{
+      const rarity = row.querySelector('.c-rarity').value;
+      row.querySelector('.c-weight').value = RARITY_WEIGHTS[rarity] || 1;
+    });
+    showMsg(crateMsg, "Poids recalculés selon la rareté de chaque lot — pense à enregistrer.", true);
+  });
+
   crateSaveBtn.addEventListener('click', async ()=>{
     if(crateRows.querySelector('.c-image-upload-btn.uploading')){
       showMsg(crateMsg, "Attends la fin de l'envoi de l'image avant d'enregistrer.", false);
@@ -566,7 +596,7 @@
       name: row.querySelector('.c-name').value.trim(),
       image: row.querySelector('.c-image').value.trim(),
       rarity: row.querySelector('.c-rarity').value,
-      weight: Math.max(1, parseInt(row.querySelector('.c-weight').value, 10) || 1),
+      weight: Math.max(0.5, parseFloat(row.querySelector('.c-weight').value) || 1),
     })).filter(it => it.name);
 
     if(items.length === 0){

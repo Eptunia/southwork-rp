@@ -791,7 +791,7 @@
 
     <div class="crate-loot" id="crateLoot">
       <button class="crate-loot-toggle" id="crateLootToggle" type="button">
-        <span>🎁 Contenu possible de la caisse</span>
+        <span>🎁 Voir le contenu</span>
         <span class="crate-loot-arrow">▾</span>
       </button>
       <ul class="crate-loot-list" id="crateLootList"></ul>
@@ -1607,6 +1607,15 @@ const RARITY_COLORS = {
 };
 const isUltime = (rarity) => rarity === 'Ultime';
 
+// Poids par défaut selon la rareté : plus un lot est rare, plus son poids est
+// faible, donc plus il a peu de chances de sortir dans le tirage pondéré.
+// Ces valeurs servent de repli quand un lot n'a pas de "weight" explicite
+// configuré côté admin (ex: anciennes caisses enregistrées avant ce système).
+const RARITY_WEIGHTS = {
+  'Commune':100, 'Rare':55, 'Très Rare':30, 'Épique':16,
+  'Émeraude':9, 'Mythique':5, 'Légendaire':2.5, 'Ultime':1
+};
+
 let currentCrateItem = null;
 let crateBusy = false;
 
@@ -1660,7 +1669,10 @@ crateOverlay.addEventListener('click', (e)=>{ if(e.target === crateOverlay) clos
 // Tirage pondéré : chaque lot a un poids (weight) défini par l'admin ; plus il est élevé,
 // plus le lot a de chances de sortir. Un poids absent ou invalide vaut 1 par défaut.
 function pickWeightedReward(items){
-  const weightOf = it => (Number(it.weight) > 0 ? Number(it.weight) : 1);
+  const weightOf = it => {
+    if(Number(it.weight) > 0) return Number(it.weight);
+    return RARITY_WEIGHTS[it.rarity] || 1;
+  };
   const total = items.reduce((s, it) => s + weightOf(it), 0);
   let r = Math.random() * total;
   for(const it of items){
