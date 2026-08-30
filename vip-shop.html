@@ -632,6 +632,35 @@
   .crate-modal h3{ font-family:'Poppins',sans-serif; font-size:22px; font-weight:800; padding-right:36px; }
   .crate-modal-sub{ color:var(--dim); font-size:13px; margin-top:4px; margin-bottom:20px; }
 
+  .crate-loot{
+    border:1px solid var(--line); border-radius:12px;
+    background:var(--panel-2); overflow:hidden; margin-bottom:18px;
+  }
+  .crate-loot-toggle{
+    width:100%; display:flex; align-items:center; justify-content:space-between;
+    background:transparent; border:none; color:var(--text);
+    font-size:13px; font-weight:700; padding:12px 14px; cursor:pointer;
+  }
+  .crate-loot-toggle:hover{ color:var(--gold-bright); }
+  .crate-loot-arrow{ color:var(--dim); transition:transform .2s ease; font-size:11px; }
+  .crate-loot.open .crate-loot-arrow{ transform:rotate(180deg); }
+  .crate-loot-list{
+    list-style:none; max-height:0; overflow-y:auto; transition:max-height .25s ease;
+    padding:0 14px;
+  }
+  .crate-loot.open .crate-loot-list{ max-height:230px; padding:0 14px 12px; }
+  .crate-loot-list li{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:12.5px; color:var(--text); padding:7px 0; border-top:1px solid var(--line);
+  }
+  .crate-loot-list li:first-child{ border-top:none; }
+  .crate-loot-list .li-tag{
+    flex-shrink:0; font-size:10px; font-weight:800; letter-spacing:.3px;
+    padding:2.5px 8px; border-radius:20px; white-space:nowrap;
+  }
+  .crate-loot-list .li-tag.perm{ color:#4ade80; border:1px solid #4ade80; }
+  .crate-loot-list .li-tag.noperm{ color:var(--dim); border:1px solid var(--line); }
+
   .crate-roulette-wrap{
     position:relative;
     height:150px;
@@ -759,6 +788,14 @@
     <button class="crate-modal-close" id="crateModalClose">✕</button>
     <h3 id="crateModalTitle"></h3>
     <div class="crate-modal-sub" id="crateModalSub"></div>
+
+    <div class="crate-loot" id="crateLoot">
+      <button class="crate-loot-toggle" id="crateLootToggle" type="button">
+        <span>🎁 Contenu possible de la caisse</span>
+        <span class="crate-loot-arrow">▾</span>
+      </button>
+      <ul class="crate-loot-list" id="crateLootList"></ul>
+    </div>
 
     <div class="crate-roulette-wrap" id="crateRouletteWrap">
       <div class="crate-pointer"></div>
@@ -1074,11 +1111,91 @@ const ITEMS = {
     {name:'1 000 000$', price:5100, icon:ICONS.gem, image:'images/1000000.png'},
   ],
   cases:[
-    {name:'Caisse Bronze', price:850, icon:ICONS.crate, image:'images/caisse-bronze.png', rarity:'Commune', crateId:'bronze'},
-    {name:'Caisse Argent', price:1250, icon:ICONS.crate, image:'images/caisse-argent.png', rarity:'Rare', crateId:'argent'},
-    {name:'Caisse Gold', price:1850, icon:ICONS.crate, image:'images/caisse-gold.png', rarity:'Épique', crateId:'gold'},
-    {name:'Caisse Diamant', price:2400, icon:ICONS.crate, image:'images/caisse-diamant.png', rarity:'Légendaire', crateId:'diamant'},
-    {name:'Caisse Ultime', price:3200, icon:ICONS.crate, image:'images/caisse-ultime.png', rarity:'Mythique', crateId:'ultime'},
+    {name:'Caisse Bronze', price:850, icon:ICONS.crate, image:'images/caisse-bronze.png', rarity:'Commune', crateId:'bronze', descriptionList:[
+      'Berreta : Pas Perm',
+      '25 000$',
+      '50 000$',
+      '50 Burger',
+      '50 Coca',
+      'Couteau : Pas Perm',
+      '250 Coins',
+      '500 Coins',
+      'Sanchez : Pas Perm',
+      'Futo : Pas Perm',
+      'Caisse Silver x1',
+    ]},
+    {name:'Caisse Argent', price:1250, icon:ICONS.crate, image:'images/caisse-argent.png', rarity:'Rare', crateId:'argent', descriptionList:[
+      'Barreta : Pas Perm',
+      'Calibre 50 : Pas Perm',
+      'Machette : Pas Perm',
+      'Poing américain : Pas Perm',
+      '50 000$',
+      '75 000$',
+      '100 000$',
+      '750 Coins',
+      '1000 Coins',
+      '1800 Coins',
+      'Eleghy Rh8 : Pas Perm',
+      'Kuruma : Pas Perm',
+      'Caisse Gold',
+    ]},
+    {name:'Caisse Gold', price:1850, icon:ICONS.crate, image:'images/caisse-gold.png', rarity:'Épique', crateId:'gold', descriptionList:[
+      'Cal50 : Pas Perm',
+      'Tech 9 : Pas Perm',
+      'Uzi : Pas Perm',
+      'Hache de Pierre : Perm',
+      'Pistolet Navy : Perm',
+      '100 000$',
+      '150 000$',
+      '100 Coca',
+      '100 Burger',
+      'x1 Jeton custom (véhicule)',
+      '1500 Coins',
+      '2500 Coins',
+      'Comet S2 : Pas Perm',
+      'Komoda : Pas Perm',
+      'Primo : Pas Perm',
+      'Caisse Diamant',
+    ]},
+    {name:'Caisse Diamant', price:2400, icon:ICONS.crate, image:'images/caisse-diamant.png', rarity:'Légendaire', crateId:'diamant', descriptionList:[
+      'Pistolet Perico : Pas Perm',
+      'ADP de Combat : Pas Perm',
+      'Uzi : Pas Perm',
+      'Ak Compact : Pas Perm',
+      '150 000$',
+      '200 000$',
+      'x10 Magic Remède',
+      '2000 Coins',
+      '3000 Coins',
+      'Juguler : Pas Perm',
+      'CaraCara : Pas Perm',
+      'Schlagen GT : Pas Perm',
+      'Bons d\'achat logement 150k',
+      'Caisse Diamant',
+    ]},
+    {name:'Caisse Ultime', price:3200, icon:ICONS.crate, image:'images/caisse-ultime.png', rarity:'Mythique', crateId:'ultime', descriptionList:[
+      'Tambour : Pas Perm',
+      'Pistolet Perforant : Pas Perm',
+      'Spas12 : Perm',
+      'Double Action : Perm',
+      'Mitraillette MKII : Pas Perm',
+      '250 000$',
+      '300 000$',
+      '350 000$',
+      '2400 Coins',
+      '3400 Coins',
+      '3900 Coins',
+      'x20 Magic Remède',
+      'x1 Jeton Custom (véhicule)',
+      'Logement 200k',
+      'Sentinel GTS : Pas Perm',
+      'Zentorno : Pas Perm',
+      'Buffalo STX : Perm',
+      'Coquette D10 : Pas Perm',
+      'Caisse Silver',
+      'Caisse Gold',
+      'Caisse Diamant',
+    ]},
   ],
   vehicles:[
     {name:'Thrax', price:2400, icon:ICONS.car, image:'images/thrax.png'},
@@ -1471,6 +1588,11 @@ const crateResultItem = document.getElementById('crateResultItem');
 const crateOpenBtn = document.getElementById('crateOpenBtn');
 const crateOpenPrice = document.getElementById('crateOpenPrice');
 const crateModalMsg = document.getElementById('crateModalMsg');
+const crateLoot = document.getElementById('crateLoot');
+const crateLootToggle = document.getElementById('crateLootToggle');
+const crateLootList = document.getElementById('crateLootList');
+
+crateLootToggle.addEventListener('click', ()=> crateLoot.classList.toggle('open'));
 
 // Ordre du commun vers le plus rare : Commune → Rare → Très Rare → Épique → Émeraude → Mythique → Légendaire → Ultime
 const RARITY_COLORS = {
@@ -1497,6 +1619,23 @@ function openCrateModal(catId, item){
   crateModalTitle.textContent = item.name;
   crateModalSub.textContent = (item.rarity ? item.rarity + ' — ' : '') + 'Ouvre la caisse et tente de remporter un lot au hasard !';
   crateOpenPrice.textContent = fmt(item.price);
+  crateLoot.classList.remove('open');
+  if(item.descriptionList && item.descriptionList.length){
+    crateLoot.style.display = '';
+    crateLootList.innerHTML = item.descriptionList.map(line=>{
+      const m = line.match(/^(.*):\s*(Perm|Pas Perm)$/i);
+      if(m){
+        const name = m[1].trim();
+        const tag = m[2];
+        const cls = /pas/i.test(tag) ? 'noperm' : 'perm';
+        return `<li><span>${name}</span><span class="li-tag ${cls}">${tag}</span></li>`;
+      }
+      return `<li><span>${line}</span></li>`;
+    }).join('');
+  } else {
+    crateLoot.style.display = 'none';
+    crateLootList.innerHTML = '';
+  }
   crateResult.classList.add('hidden');
   crateRouletteWrap.classList.remove('show-track');
   crateRouletteTrack.innerHTML = '';
