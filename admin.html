@@ -467,8 +467,32 @@
     const storage = firebase.storage();
     const safeName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const ref = storage.ref().child('crateImages/' + safeName);
-    const snap = await ref.put(file);
-    return await snap.ref.getDownloadURL();
+
+    // ref.put() peut retenter indéfiniment en silence si Storage n'est pas
+    // activé, si les règles bloquent l'écriture, ou si le CORS du bucket
+    // n'est pas configuré. On écoute les évènements pour avoir une vraie
+    // erreur, et on ajoute un timeout de secours pour ne jamais rester
+    // bloqué sur "Envoi..." indéfiniment.
+    const uploadTask = ref.put(file);
+
+    const uploadPromise = new Promise((resolve, reject)=>{
+      uploadTask.on('state_changed',
+        null,
+        (err)=> reject(err),
+        ()=> resolve()
+      );
+    });
+
+    const timeoutPromise = new Promise((_, reject)=>{
+      setTimeout(()=> reject(new Error(
+        "Timeout : aucune réponse de Firebase Storage après 20s. " +
+        "Vérifie que Storage est activé sur le projet, que les règles de " +
+        "sécurité autorisent l'écriture, et que le CORS du bucket est configuré."
+      )), 20000);
+    });
+
+    await Promise.race([uploadPromise, timeoutPromise]);
+    return await uploadTask.snapshot.ref.getDownloadURL();
   }
 
   function addCrateRow(item){
