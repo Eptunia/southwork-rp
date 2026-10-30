@@ -196,6 +196,7 @@
   .bourse-select:focus{ border-color:var(--green); }
   .bourse-price-up{ color:#4ade80; }
   .bourse-price-down{ color:var(--red); }
+  .stock-row:hover{ background:rgba(255,255,255,.03); border-radius:10px; }
   .rm-btn.edit-btn:hover{ border-color:var(--gold) !important; color:var(--gold) !important; }
 </style>
 </head>
@@ -813,13 +814,13 @@
         const price = fakePrice(s, Date.now());
         const cls = price >= s.basePrice ? 'bourse-price-up' : 'bourse-price-down';
         return `
-          <div class="crate-row" style="grid-template-columns:1.6fr 1fr 1fr 1fr 72px;">
+          <div class="crate-row stock-row" data-edit="${s.id}" title="Cliquer pour modifier" style="grid-template-columns:1.6fr 1fr 1fr 1fr 72px;cursor:pointer;">
             <span>${s.name} <span style="color:var(--dim);font-size:11px;">${s.symbol||''}</span></span>
             <span class="${cls}">${Math.round(price).toLocaleString('fr-FR')}</span>
             <span>${VOLATILITE_LABEL[s.volatility]||s.volatility}</span>
             <span>${TENDANCE_LABEL[s.trend]||s.trend}</span>
             <span style="display:flex;gap:6px;">
-              <button type="button" class="rm-btn edit-btn" data-edit="${s.id}" title="Modifier">✎</button>
+              <button type="button" class="rm-btn edit-btn" title="Modifier">✎</button>
               <button type="button" class="rm-btn" data-id="${s.id}" title="Supprimer">✕</button>
             </span>
           </div>`;
@@ -834,6 +835,7 @@
     }
 
     listEl.addEventListener('click', (e)=>{
+      if(e.target.closest('.rm-btn[data-id]')) return; // le ✕ supprime, il ne modifie pas
       const b = e.target.closest('[data-edit]');
       if(!b) return;
       const s = stocksLive.find(x=>x.id===b.dataset.edit);
