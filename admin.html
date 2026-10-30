@@ -271,7 +271,7 @@
 <!-- ---------- BOURSE (fausse) : création des actions ---------- -->
 <div class="panel crate-panel hidden" id="bourseAdminPanel">
   <h1><span class="vip">Bourse</span> — Actions</h1>
-  <div class="sub">Crée des actions fictives sur lesquelles les joueurs peuvent investir leurs Coins depuis la boutique (widget en bas à gauche). Le cours évolue tout seul avec le temps — c'est un faux marché, sans aucune valeur réelle.</div>
+  <div class="sub">Crée des actions fictives sur lesquelles les joueurs peuvent investir leurs Coins depuis la boutique (widget en bas à gauche). Le cours démarre au prix indiqué puis évolue lentement tout seul (heures, jours) comme un vrai marché — c'est un faux marché, sans aucune valeur réelle.</div>
 
   <label>Nom de l'action</label>
   <input type="text" id="bAdminName" placeholder="SouthCorp" maxlength="40">
@@ -668,50 +668,65 @@
   });
 
   /* ---------------- BOURSE (fausse) ---------------- */
-  // Même moteur de prix factice que vip-shop.html (doit rester identique des deux
-  // côtés) : le cours à un instant t est une fonction pure et déterministe du temps,
-  // donc pas besoin de stocker d'historique ni de faire tourner un serveur en continu.
+  // Même moteur de prix que vip-shop.html (doit rester identique des deux côtés).
   const bourseAdminPanel = document.getElementById('bourseAdminPanel');
   (function(){
     const VOLATILITE_LABEL = { faible:'Faible', moyenne:'Moyenne', elevee:'Élevée', extreme:'Extrême' };
     const TENDANCE_LABEL   = { hausse:'Haussière', neutre:'Neutre', baisse:'Baissière' };
-    const VOLATILITE = { faible:0.03, moyenne:0.07, elevee:0.13, extreme:0.22 };
-    const TENDANCE   = { hausse:0.15, neutre:0, baisse:-0.15 };
-
-    function seedOf(str){
-      let h = 0;
-      for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
-      return h || 1;
+  // ===== MOTEUR DE COURS RÉALISTE (identique dans admin.html et vip-shop.html) =====
+  // Le cours est une fonction pure et déterministe du temps : tout le monde voit la
+  // même courbe, sans serveur ni historique. Il est construit comme un vrai marché :
+  //  - bruit fractal sur 9 échelles de temps (de 20 s à 3 jours) → pas de motif répétitif,
+  //  - régimes de volatilité (périodes calmes puis agitées),
+  //  - une action démarre EXACTEMENT à son prix de départ, puis s'en éloigne
+  //    progressivement (quelques heures) et sa tendance se construit sur ~3 jours.
+  const VOLATILITE = { faible:0.03, moyenne:0.07, elevee:0.13, extreme:0.22 };
+  const TENDANCE   = { hausse:0.15, neutre:0, baisse:-0.15 };
+  const H = 3600*1000, D = 24*H;
+  // [période (ms), amplitude, composante rapide (modulée par le régime de volatilité)]
+  const OCTAVES = [
+    [3*D, .55, 0], [D, .45, 0], [6*H, .32, 0], [2*H, .22, 0],
+    [40*60000, .15, 1], [10*60000, .09, 1], [3*60000, .05, 1], [60000, .03, 1], [20000, .015, 1]
+  ];
+  function seedOf(str){
+    let h = 0;
+    for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
+    return h || 1;
+  }
+  function hash01(seed, i){
+    let h = (seed ^ Math.imul(i|0, 0x9E3779B1)) >>> 0;
+    h = Math.imul(h ^ (h>>>15), 0x85EBCA6B);
+    h = Math.imul(h ^ (h>>>13), 0xC2B2AE35);
+    h ^= h>>>16;
+    return (h>>>0)/4294967296;
+  }
+  const fade = f => f*f*f*(f*(f*6-15)+10);
+  // Bruit de gradient 1D (Perlin) : courbe lisse, sans paliers, dans [-1, 1]
+  function gnoise(seed, t, period, k){
+    const x = t/period, i = Math.floor(x), f = x - i;
+    const s = seed + k*7919;
+    const g0 = hash01(s, i)*2-1, g1 = hash01(s, i+1)*2-1;
+    const a = g0*f, b = g1*(f-1);
+    return (a + (b-a)*fade(f))*2;
+  }
+  function fakePrice(stock, t){
+    const seed = seedOf(String(stock.id||'x'));
+    const base = stock.basePrice || 100;
+    const created = (stock.createdAt && stock.createdAt.toMillis) ? stock.createdAt.toMillis() : t;
+    const age = Math.max(0, t - created);
+    const ramp      = 1 - Math.exp(-age/(6*H));    // s'éloigne du prix de départ en ~6 h
+    const trendRamp = 1 - Math.exp(-age/(3*D));    // la tendance se construit sur ~3 jours
+    const regime = 0.6 + 0.8*(0.5 + 0.5*gnoise(seed, t, 12*H, 99)); // 0.6 (calme) → 1.4 (agité)
+    let sum = 0;
+    for(let k=0;k<OCTAVES.length;k++){
+      const o = OCTAVES[k];
+      sum += gnoise(seed, t, o[0], k) * o[1] * (o[2] ? regime : 1);
     }
-    function rngOf(seed){
-      return function(){
-        seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-    }
-    const wavesCache = {};
-    function wavesOf(id){
-      if(!wavesCache[id]){
-        const rnd = rngOf(seedOf(id));
-        const w = [];
-        for(let i=0;i<5;i++) w.push({ freq:0.0000015+rnd()*0.00035, phase:rnd()*Math.PI*2, amp:0.5+rnd() });
-        wavesCache[id] = w;
-      }
-      return wavesCache[id];
-    }
-    function fakePrice(stock, t){
-      const w = wavesOf(stock.id);
-      let delta = 0;
-      w.forEach(x => delta += Math.sin(t*x.freq + x.phase) * x.amp);
-      delta /= w.length;
-      const osc = Math.tanh(delta*1.4); // toujours borné entre -1 et 1 : pas de dérive, pas de crash
-      const base = stock.basePrice || 100;
-      const bias = TENDANCE[stock.trend] ?? 0;
-      const vol  = VOLATILITE[stock.volatility] ?? 0.07;
-      return Math.max(base * (1 + bias + vol*osc), base*0.05);
-    }
+    const osc  = Math.tanh(sum*1.6);               // borné : pas de dérive infinie, pas de crash
+    const bias = TENDANCE[stock.trend] ?? 0;
+    const vol  = VOLATILITE[stock.volatility] ?? 0.07;
+    return Math.max(base * (1 + bias*trendRamp + vol*osc*ramp), base*0.05);
+  }
 
     const nameInput    = document.getElementById('bAdminName');
     const symInput     = document.getElementById('bAdminSymbol');
