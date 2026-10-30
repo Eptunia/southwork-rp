@@ -196,6 +196,7 @@
   .bourse-select:focus{ border-color:var(--green); }
   .bourse-price-up{ color:#4ade80; }
   .bourse-price-down{ color:var(--red); }
+  .rm-btn.edit-btn:hover{ border-color:var(--gold) !important; color:var(--gold) !important; }
 </style>
 </head>
 <body>
@@ -297,10 +298,12 @@
     <option value="baisse">Baissière</option>
   </select>
 
+  <div class="msg ok" id="bAdminEditBanner" style="display:none;"></div>
   <button id="bAdminCreateBtn">Créer l'action</button>
+  <button class="secondary" id="bAdminCancelBtn" style="display:none;">Annuler la modification</button>
   <div class="msg" id="bAdminMsg"></div>
 
-  <div class="crate-rows-head" style="grid-template-columns:1.6fr 1fr 1fr 1fr auto;">
+  <div class="crate-rows-head" style="grid-template-columns:1.6fr 1fr 1fr 1fr 72px;">
     <span>Action</span><span>Cours actuel</span><span>Volatilité</span><span>Tendance</span><span></span>
   </div>
   <div id="bAdminList"></div>
@@ -737,6 +740,35 @@
     const bMsg         = document.getElementById('bAdminMsg');
     const listEl       = document.getElementById('bAdminList');
 
+    const cancelBtn = document.getElementById('bAdminCancelBtn');
+    const banner    = document.getElementById('bAdminEditBanner');
+    let editingId = null;
+
+    function resetForm(){
+      editingId = null;
+      nameInput.value = ''; symInput.value = ''; priceInput.value = '';
+      volSelect.value = 'moyenne'; trendSelect.value = 'neutre';
+      createBtn.textContent = "Créer l'action";
+      cancelBtn.style.display = 'none';
+      banner.style.display = 'none';
+    }
+    function startEdit(s){
+      editingId = s.id;
+      nameInput.value = s.name || '';
+      symInput.value = s.symbol || '';
+      priceInput.value = s.basePrice || '';
+      volSelect.value = s.volatility || 'moyenne';
+      trendSelect.value = s.trend || 'neutre';
+      createBtn.textContent = 'Enregistrer les modifications';
+      cancelBtn.style.display = 'block';
+      banner.style.display = 'block';
+      banner.textContent = `Modification de « ${s.name} » — le nouveau prix de départ, la volatilité et la tendance s'appliquent immédiatement à la courbe (le cours peut donc faire un saut).`;
+      bMsg.className = 'msg';
+      nameInput.scrollIntoView({ behavior:'smooth', block:'center' });
+      nameInput.focus();
+    }
+    cancelBtn.addEventListener('click', resetForm);
+
     createBtn.addEventListener('click', async ()=>{
       const name = nameInput.value.trim();
       const symbol = symInput.value.trim().toUpperCase();
@@ -745,17 +777,28 @@
       if(!basePrice || basePrice <= 0){ showMsg(bMsg, "Entre un prix de départ valide.", false); return; }
       createBtn.disabled = true;
       try{
-        await db.collection('stocks').add({
-          name, symbol,
-          basePrice,
-          volatility: volSelect.value,
-          trend: trendSelect.value,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        showMsg(bMsg, `Action "${name}" créée — elle apparaît maintenant dans la boutique.`, true);
-        nameInput.value = ''; symInput.value = ''; priceInput.value = '';
+        if(editingId){
+          await db.collection('stocks').doc(editingId).update({
+            name, symbol, basePrice,
+            volatility: volSelect.value,
+            trend: trendSelect.value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          showMsg(bMsg, `Action "${name}" modifiée.`, true);
+          resetForm();
+        } else {
+          await db.collection('stocks').add({
+            name, symbol,
+            basePrice,
+            volatility: volSelect.value,
+            trend: trendSelect.value,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          showMsg(bMsg, `Action "${name}" créée — elle apparaît maintenant dans la boutique.`, true);
+          nameInput.value = ''; symInput.value = ''; priceInput.value = '';
+        }
       } catch(err){
-        showMsg(bMsg, "Erreur lors de la création : " + err.message, false);
+        showMsg(bMsg, "Erreur : " + err.message, false);
       } finally {
         createBtn.disabled = false;
       }
@@ -770,15 +813,18 @@
         const price = fakePrice(s, Date.now());
         const cls = price >= s.basePrice ? 'bourse-price-up' : 'bourse-price-down';
         return `
-          <div class="crate-row" style="grid-template-columns:1.6fr 1fr 1fr 1fr auto;">
+          <div class="crate-row" style="grid-template-columns:1.6fr 1fr 1fr 1fr 72px;">
             <span>${s.name} <span style="color:var(--dim);font-size:11px;">${s.symbol||''}</span></span>
             <span class="${cls}">${Math.round(price).toLocaleString('fr-FR')}</span>
             <span>${VOLATILITE_LABEL[s.volatility]||s.volatility}</span>
             <span>${TENDANCE_LABEL[s.trend]||s.trend}</span>
-            <button type="button" class="rm-btn" data-id="${s.id}" title="Supprimer">✕</button>
+            <span style="display:flex;gap:6px;">
+              <button type="button" class="rm-btn edit-btn" data-edit="${s.id}" title="Modifier">✎</button>
+              <button type="button" class="rm-btn" data-id="${s.id}" title="Supprimer">✕</button>
+            </span>
           </div>`;
       }).join('');
-      listEl.querySelectorAll('.rm-btn').forEach(btn=>{
+      listEl.querySelectorAll('.rm-btn[data-id]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
           if(!confirm("Supprimer cette action ? Les positions déjà ouvertes par les joueurs resteront liées à une action qui n'existera plus dans le marché.")) return;
           try{ await db.collection('stocks').doc(btn.dataset.id).delete(); }
@@ -786,6 +832,13 @@
         });
       });
     }
+
+    listEl.addEventListener('click', (e)=>{
+      const b = e.target.closest('[data-edit]');
+      if(!b) return;
+      const s = stocksLive.find(x=>x.id===b.dataset.edit);
+      if(s) startEdit(s);
+    });
 
     let stocksLive = [];
     db.collection('stocks').orderBy('createdAt','desc').onSnapshot(snap=>{
