@@ -187,6 +187,15 @@
   .c-image-upload-btn:hover{ color:var(--text); border-color:var(--violet); box-shadow:none; }
   .c-image-upload-btn.uploading{ opacity:.6; pointer-events:none; }
   .c-image-file{ display:none; }
+
+  /* ---------------- BOURSE (fausse) ---------------- */
+  .bourse-select{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; color:var(--text); font-family:"Courier New",monospace; font-size:14px; outline:none;
+  }
+  .bourse-select:focus{ border-color:var(--green); }
+  .bourse-price-up{ color:#4ade80; }
+  .bourse-price-down{ color:var(--red); }
 </style>
 </head>
 <body>
@@ -257,6 +266,44 @@
   <button class="secondary" id="crateRecalcWeightsBtn">🎲 Recalculer les poids selon la rareté</button>
   <button id="crateSaveBtn">Enregistrer les lots</button>
   <div class="msg" id="crateMsg"></div>
+</div>
+
+<!-- ---------- BOURSE (fausse) : création des actions ---------- -->
+<div class="panel crate-panel hidden" id="bourseAdminPanel">
+  <h1><span class="vip">Bourse</span> — Actions</h1>
+  <div class="sub">Crée des actions fictives sur lesquelles les joueurs peuvent investir leurs Coins depuis la boutique (widget en bas à gauche). Le cours évolue tout seul avec le temps — c'est un faux marché, sans aucune valeur réelle.</div>
+
+  <label>Nom de l'action</label>
+  <input type="text" id="bAdminName" placeholder="SouthCorp" maxlength="40">
+
+  <label>Symbole</label>
+  <input type="text" id="bAdminSymbol" placeholder="SCR" maxlength="6" style="text-transform:uppercase;">
+
+  <label>Prix de départ (Coins)</label>
+  <input type="number" id="bAdminPrice" placeholder="1000" min="1" step="1">
+
+  <label>Volatilité</label>
+  <select id="bAdminVol" class="bourse-select">
+    <option value="faible">Faible — mouvements doux</option>
+    <option value="moyenne" selected>Moyenne</option>
+    <option value="elevee">Élevée</option>
+    <option value="extreme">Extrême — très risqué</option>
+  </select>
+
+  <label>Tendance</label>
+  <select id="bAdminTrend" class="bourse-select">
+    <option value="hausse">Haussière</option>
+    <option value="neutre" selected>Neutre</option>
+    <option value="baisse">Baissière</option>
+  </select>
+
+  <button id="bAdminCreateBtn">Créer l'action</button>
+  <div class="msg" id="bAdminMsg"></div>
+
+  <div class="crate-rows-head" style="grid-template-columns:1.6fr 1fr 1fr 1fr auto;">
+    <span>Action</span><span>Cours actuel</span><span>Volatilité</span><span>Tendance</span><span></span>
+  </div>
+  <div id="bAdminList"></div>
 </div>
 
 
@@ -333,12 +380,14 @@
       loginBox.classList.add('hidden');
       adminBox.classList.remove('hidden');
       cratePanel.classList.remove('hidden');
+      bourseAdminPanel.classList.remove('hidden');
       document.getElementById('logoutBtn').style.display = 'block';
       loadCrateConfig(crateSelect.value);
     } else {
       loginBox.classList.remove('hidden');
       adminBox.classList.add('hidden');
       cratePanel.classList.add('hidden');
+      bourseAdminPanel.classList.add('hidden');
     }
   });
 
@@ -617,6 +666,120 @@
       crateSaveBtn.disabled = false;
     }
   });
+
+  /* ---------------- BOURSE (fausse) ---------------- */
+  // Même moteur de prix factice que vip-shop.html (doit rester identique des deux
+  // côtés) : le cours à un instant t est une fonction pure et déterministe du temps,
+  // donc pas besoin de stocker d'historique ni de faire tourner un serveur en continu.
+  const bourseAdminPanel = document.getElementById('bourseAdminPanel');
+  (function(){
+    const VOLATILITE_LABEL = { faible:'Faible', moyenne:'Moyenne', elevee:'Élevée', extreme:'Extrême' };
+    const TENDANCE_LABEL   = { hausse:'Haussière', neutre:'Neutre', baisse:'Baissière' };
+    const VOLATILITE = { faible:0.03, moyenne:0.07, elevee:0.13, extreme:0.22 };
+    const TENDANCE   = { hausse:0.15, neutre:0, baisse:-0.15 };
+
+    function seedOf(str){
+      let h = 0;
+      for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
+      return h || 1;
+    }
+    function rngOf(seed){
+      return function(){
+        seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    const wavesCache = {};
+    function wavesOf(id){
+      if(!wavesCache[id]){
+        const rnd = rngOf(seedOf(id));
+        const w = [];
+        for(let i=0;i<5;i++) w.push({ freq:0.0000015+rnd()*0.00035, phase:rnd()*Math.PI*2, amp:0.5+rnd() });
+        wavesCache[id] = w;
+      }
+      return wavesCache[id];
+    }
+    function fakePrice(stock, t){
+      const w = wavesOf(stock.id);
+      let delta = 0;
+      w.forEach(x => delta += Math.sin(t*x.freq + x.phase) * x.amp);
+      delta /= w.length;
+      const osc = Math.tanh(delta*1.4); // toujours borné entre -1 et 1 : pas de dérive, pas de crash
+      const base = stock.basePrice || 100;
+      const bias = TENDANCE[stock.trend] ?? 0;
+      const vol  = VOLATILITE[stock.volatility] ?? 0.07;
+      return Math.max(base * (1 + bias + vol*osc), base*0.05);
+    }
+
+    const nameInput    = document.getElementById('bAdminName');
+    const symInput     = document.getElementById('bAdminSymbol');
+    const priceInput   = document.getElementById('bAdminPrice');
+    const volSelect    = document.getElementById('bAdminVol');
+    const trendSelect  = document.getElementById('bAdminTrend');
+    const createBtn    = document.getElementById('bAdminCreateBtn');
+    const bMsg         = document.getElementById('bAdminMsg');
+    const listEl       = document.getElementById('bAdminList');
+
+    createBtn.addEventListener('click', async ()=>{
+      const name = nameInput.value.trim();
+      const symbol = symInput.value.trim().toUpperCase();
+      const basePrice = parseInt(priceInput.value, 10);
+      if(!name){ showMsg(bMsg, "Entre un nom pour l'action.", false); return; }
+      if(!basePrice || basePrice <= 0){ showMsg(bMsg, "Entre un prix de départ valide.", false); return; }
+      createBtn.disabled = true;
+      try{
+        await db.collection('stocks').add({
+          name, symbol,
+          basePrice,
+          volatility: volSelect.value,
+          trend: trendSelect.value,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showMsg(bMsg, `Action "${name}" créée — elle apparaît maintenant dans la boutique.`, true);
+        nameInput.value = ''; symInput.value = ''; priceInput.value = '';
+      } catch(err){
+        showMsg(bMsg, "Erreur lors de la création : " + err.message, false);
+      } finally {
+        createBtn.disabled = false;
+      }
+    });
+
+    function renderList(stocks){
+      if(stocks.length === 0){
+        listEl.innerHTML = '<div class="history-empty">Aucune action créée pour l\'instant.</div>';
+        return;
+      }
+      listEl.innerHTML = stocks.map(s=>{
+        const price = fakePrice(s, Date.now());
+        const cls = price >= s.basePrice ? 'bourse-price-up' : 'bourse-price-down';
+        return `
+          <div class="crate-row" style="grid-template-columns:1.6fr 1fr 1fr 1fr auto;">
+            <span>${s.name} <span style="color:var(--dim);font-size:11px;">${s.symbol||''}</span></span>
+            <span class="${cls}">${Math.round(price).toLocaleString('fr-FR')}</span>
+            <span>${VOLATILITE_LABEL[s.volatility]||s.volatility}</span>
+            <span>${TENDANCE_LABEL[s.trend]||s.trend}</span>
+            <button type="button" class="rm-btn" data-id="${s.id}" title="Supprimer">✕</button>
+          </div>`;
+      }).join('');
+      listEl.querySelectorAll('.rm-btn').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!confirm("Supprimer cette action ? Les positions déjà ouvertes par les joueurs resteront liées à une action qui n'existera plus dans le marché.")) return;
+          try{ await db.collection('stocks').doc(btn.dataset.id).delete(); }
+          catch(err){ showMsg(bMsg, "Erreur lors de la suppression : " + err.message, false); }
+        });
+      });
+    }
+
+    let stocksLive = [];
+    db.collection('stocks').orderBy('createdAt','desc').onSnapshot(snap=>{
+      stocksLive = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      renderList(stocksLive);
+    }, err=> console.error('Bourse admin : erreur de chargement', err));
+
+    setInterval(()=> renderList(stocksLive), 4000); // rafraîchit les cours affichés
+  })();
 </script>
 </body>
 </html>

@@ -813,6 +813,113 @@
   @media (max-width:820px){ .bento .tile.event{ grid-row:auto; grid-column:1 / -1; height:140px; } }
   @media (max-width:520px){ .tile.event h3{ font-size:24px; } .tile.event .tile-icon{ font-size:46px; right:14px; } #hw-deco .web{ width:120px; height:120px; } }
   @media (prefers-reduced-motion: reduce){ #hw-layer, #hw-deco .spider i{ display:none; } }
+
+  /* ---------------- BOURSE (fausse) : bouton flottant + panneau ---------------- */
+  .bourse-fab{
+    position:fixed; left:26px; bottom:26px; z-index:60;
+    width:58px; height:58px; border-radius:50%;
+    background:linear-gradient(135deg, #22c55e, #15803d); border:none; color:#fff; cursor:pointer;
+    font-size:22px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 26px -8px rgba(34,197,94,.65);
+    transition:transform .18s ease, filter .18s ease;
+  }
+  .bourse-fab:hover{ transform:translateY(-3px) scale(1.05); filter:brightness(1.1); }
+
+  .bourse-overlay{
+    position:fixed; inset:0; z-index:230;
+    background:rgba(0,0,0,.72); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .bourse-overlay.show{ opacity:1; pointer-events:auto; }
+  .bourse-modal{
+    position:relative; width:100%; max-width:640px; max-height:86vh;
+    background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:26px 24px 22px; box-shadow:0 20px 60px -20px rgba(0,0,0,.65);
+    display:flex; flex-direction:column;
+  }
+  .bourse-modal-close{
+    position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:8px;
+    background:rgba(0,0,0,.5); border:1px solid var(--line); color:#fff; cursor:pointer;
+    font-size:15px; display:flex; align-items:center; justify-content:center;
+  }
+  .bourse-modal-close:hover{ border-color:var(--red); color:var(--red); }
+  .bourse-modal h3{ font-family:'Poppins',sans-serif; font-size:21px; font-weight:800; padding-right:36px; }
+  .bourse-modal-sub{ color:var(--dim); font-size:12.5px; margin-top:4px; margin-bottom:16px; }
+
+  .bourse-tabs{ display:flex; gap:8px; margin-bottom:14px; flex-shrink:0; }
+  .bourse-tab{
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer;
+    transition:all .15s ease;
+  }
+  .bourse-tab.active{ background:#22c55e; border-color:#22c55e; color:#07220f; }
+  .bourse-tab:hover:not(.active){ color:var(--text); border-color:#22c55e; }
+
+  .bourse-list{ overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; padding-right:2px; }
+  .bourse-empty{ color:var(--dim); font-size:13px; text-align:center; padding:30px 0; }
+
+  .bourse-row{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
+    display:grid; grid-template-columns:1fr 90px auto; align-items:center; gap:12px;
+  }
+  .bourse-row-name{ font-size:14px; font-weight:800; }
+  .bourse-row-sym{ color:var(--dim); font-size:11px; font-family:"Courier New",monospace; margin-bottom:6px; }
+  .bourse-row-price{ font-family:"Courier New",monospace; font-weight:800; font-size:14.5px; text-align:right; }
+  .bourse-row-chg{ font-size:11px; font-weight:700; text-align:right; margin-top:2px; }
+  .bourse-row-chg.up{ color:#4ade80; }
+  .bourse-row-chg.down{ color:var(--red); }
+  .bourse-row canvas{ display:block; }
+  .bourse-row-actions{ display:flex; flex-direction:column; gap:6px; }
+  .bourse-btn{
+    background:#22c55e; border:none; color:#07220f; font-weight:800; font-size:11.5px;
+    padding:7px 12px; border-radius:8px; cursor:pointer; white-space:nowrap;
+  }
+  .bourse-btn:hover{ filter:brightness(1.1); }
+  .bourse-btn.sell{ background:transparent; border:1px solid var(--line); color:var(--dim); }
+  .bourse-btn.sell:hover{ border-color:var(--red); color:var(--red); }
+
+  .bourse-pos-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px; }
+  .bourse-pos-gain{ font-size:12px; font-weight:700; white-space:nowrap; }
+  .bourse-pos-gain.up{ color:#4ade80; } .bourse-pos-gain.down{ color:var(--red); }
+  .bourse-pos-meta{ color:var(--dim); font-size:11.5px; }
+
+  /* ----- Mini-modale investir / vendre ----- */
+  .bourse-invest-overlay{
+    position:fixed; inset:0; z-index:240; background:rgba(0,0,0,.78); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .bourse-invest-overlay.show{ opacity:1; pointer-events:auto; }
+  .bourse-invest-modal{
+    width:100%; max-width:360px; background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:22px;
+  }
+  .bourse-invest-modal h4{ font-family:'Poppins',sans-serif; font-size:16px; font-weight:800; margin-bottom:4px; }
+  .bourse-invest-modal .sub{ color:var(--dim); font-size:12px; margin-bottom:14px; line-height:1.5; }
+  .bourse-invest-modal input{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    padding:11px 13px; color:var(--text); font-family:"Courier New",monospace; font-size:14px;
+    outline:none; margin-bottom:12px;
+  }
+  .bourse-invest-modal input:focus{ border-color:#22c55e; }
+  .bourse-invest-modal .row-btns{ display:flex; gap:8px; }
+  .bourse-invest-modal button{
+    flex:1; border:none; border-radius:10px; padding:11px; font-weight:800; font-size:13px; cursor:pointer;
+  }
+  .bourse-invest-confirm{ background:#22c55e; color:#07220f; }
+  .bourse-invest-confirm:hover{ filter:brightness(1.1); }
+  .bourse-invest-confirm:disabled{ opacity:.5; cursor:not-allowed; }
+  .bourse-invest-cancel{ background:transparent; border:1px solid var(--line) !important; color:var(--dim); }
+  .bourse-invest-cancel:hover{ color:var(--text); }
+  .bourse-invest-msg{ font-size:12px; margin-top:10px; min-height:14px; }
+
+  html.hw .bourse-fab{ background:linear-gradient(135deg,#ff7a18,#c2410c); box-shadow:0 10px 26px -8px rgba(255,122,24,.7); }
+
+  @media (max-width:520px){
+    .bourse-row{ grid-template-columns:1fr auto; }
+    .bourse-row-actions{ grid-column:1 / span 2; flex-direction:row; }
+  }
 </style>
 </head>
 <body>
@@ -971,6 +1078,40 @@
       <div class="cart-msg" id="cartMsg"></div>
     </div>
   </aside>
+
+  <!-- ============ BOURSE (fausse) : bouton flottant + panneau ============ -->
+  <button class="bourse-fab" id="bourseFab" title="Bourse SouthCoins">📈</button>
+
+  <div class="bourse-overlay" id="bourseOverlay">
+    <div class="bourse-modal">
+      <button class="bourse-modal-close" id="bourseModalClose">✕</button>
+      <h3>📈 Bourse SouthCoins</h3>
+      <div class="bourse-modal-sub">Place tes Coins sur des actions fictives et regarde le cours évoluer en direct. Aucune valeur réelle — c'est pour le fun.</div>
+      <div class="bourse-tabs">
+        <button class="bourse-tab active" id="bourseTabMarket" type="button">Marché</button>
+        <button class="bourse-tab" id="bourseTabPortfolio" type="button">Mon portefeuille</button>
+      </div>
+      <div class="bourse-list" id="bourseMarketList">
+        <div class="bourse-empty">Chargement du marché...</div>
+      </div>
+      <div class="bourse-list hidden" id="boursePortfolioList">
+        <div class="bourse-empty">Aucune position pour l'instant.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bourse-invest-overlay" id="bourseInvestOverlay">
+    <div class="bourse-invest-modal">
+      <h4 id="bourseInvestTitle">Investir</h4>
+      <div class="sub" id="bourseInvestSub">Cours actuel : —</div>
+      <input type="number" id="bourseInvestAmount" placeholder="Montant en Coins" min="1" step="1">
+      <div class="row-btns">
+        <button class="bourse-invest-cancel" id="bourseInvestCancel" type="button">Annuler</button>
+        <button class="bourse-invest-confirm" id="bourseInvestConfirm" type="button">Investir</button>
+      </div>
+      <div class="bourse-invest-msg" id="bourseInvestMsg"></div>
+    </div>
+  </div>
 
   <!-- ============ FIREBASE : solde & code boutique ============ -->
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -1964,6 +2105,306 @@ const HALLOWEEN_ON = true; // passe à false pour retirer tous les effets
 
 renderBento();
 updateCartUI();
+</script>
+
+<!-- ============ BOURSE (fausse) : marché + portefeuille ============ -->
+<script>
+(function(){
+  // Barème volatilité/tendance → doit rester identique à celui d'admin.html
+  const VOLATILITE = { faible:0.03, moyenne:0.07, elevee:0.13, extreme:0.22 };
+  const TENDANCE   = { hausse:0.15, neutre:0, baisse:-0.15 };
+
+  function seedOf(str){
+    let h = 0;
+    for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
+    return h || 1;
+  }
+  function rngOf(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const wavesCache = {};
+  function wavesOf(id){
+    if(!wavesCache[id]){
+      const rnd = rngOf(seedOf(id));
+      const w = [];
+      for(let i=0;i<5;i++) w.push({ freq:0.0000015+rnd()*0.00035, phase:rnd()*Math.PI*2, amp:0.5+rnd() });
+      wavesCache[id] = w;
+    }
+    return wavesCache[id];
+  }
+  // Prix factice à l'instant t (ms epoch) : fonction pure et déterministe du temps.
+  // Tout le monde voit exactement la même courbe au même moment, sans historique à
+  // stocker ni serveur à faire tourner en continu — et on peut "regarder dans le
+  // passé" instantanément pour tracer un graphique, en rappelant juste la fonction
+  // avec un t plus ancien.
+  function fakePrice(stock, t){
+    const w = wavesOf(stock.id);
+    let delta = 0;
+    w.forEach(x => delta += Math.sin(t*x.freq + x.phase) * x.amp);
+    delta /= w.length;
+    const osc = Math.tanh(delta*1.4); // toujours borné entre -1 et 1
+    const base = stock.basePrice || 100;
+    const bias = TENDANCE[stock.trend] ?? 0;
+    const vol  = VOLATILITE[stock.volatility] ?? 0.07;
+    return Math.max(base * (1 + bias + vol*osc), base*0.05);
+  }
+
+  const fab          = document.getElementById('bourseFab');
+  const overlay       = document.getElementById('bourseOverlay');
+  const closeBtn      = document.getElementById('bourseModalClose');
+  const tabMarket      = document.getElementById('bourseTabMarket');
+  const tabPortfolio   = document.getElementById('bourseTabPortfolio');
+  const marketList     = document.getElementById('bourseMarketList');
+  const portfolioList  = document.getElementById('boursePortfolioList');
+
+  const investOverlay = document.getElementById('bourseInvestOverlay');
+  const investTitle   = document.getElementById('bourseInvestTitle');
+  const investSub     = document.getElementById('bourseInvestSub');
+  const investAmount  = document.getElementById('bourseInvestAmount');
+  const investCancel  = document.getElementById('bourseInvestCancel');
+  const investConfirm = document.getElementById('bourseInvestConfirm');
+  const investMsg     = document.getElementById('bourseInvestMsg');
+
+  let stocks = [];
+  let positions = [];
+  let investMode = null; // { type:'buy', stock } ou { type:'sell', position }
+
+  function openBourse(){ overlay.classList.add('show'); renderMarket(); renderPortfolio(); }
+  function closeBourse(){ overlay.classList.remove('show'); }
+  fab.addEventListener('click', openBourse);
+  closeBtn.addEventListener('click', closeBourse);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeBourse(); });
+
+  tabMarket.addEventListener('click', ()=>{
+    tabMarket.classList.add('active'); tabPortfolio.classList.remove('active');
+    marketList.classList.remove('hidden'); portfolioList.classList.add('hidden');
+  });
+  tabPortfolio.addEventListener('click', ()=>{
+    tabPortfolio.classList.add('active'); tabMarket.classList.remove('active');
+    portfolioList.classList.remove('hidden'); marketList.classList.add('hidden');
+  });
+
+  function drawSparkline(canvas, stock){
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+    const now = Date.now();
+    const SPAN = 60*60*1000; // dernière heure
+    const STEPS = 40;
+    const pts = [];
+    for(let i=0;i<=STEPS;i++) pts.push(fakePrice(stock, now - SPAN + (SPAN*i/STEPS)));
+    const min = Math.min(...pts), max = Math.max(...pts);
+    const range = (max-min) || 1;
+    ctx.beginPath();
+    pts.forEach((p,i)=>{
+      const x = (i/STEPS)*w;
+      const y = h - ((p-min)/range)*h*0.85 - h*0.075;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle = pts[pts.length-1] >= pts[0] ? '#4ade80' : '#ef4444';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+  }
+
+  function renderMarket(){
+    if(stocks.length===0){
+      marketList.innerHTML = '<div class="bourse-empty">Aucune action disponible pour le moment.</div>';
+      return;
+    }
+    marketList.innerHTML = stocks.map(s=>{
+      const price = fakePrice(s, Date.now());
+      const prev  = fakePrice(s, Date.now() - 24*3600*1000);
+      const chg   = prev ? ((price-prev)/prev)*100 : 0;
+      const chgCls = chg>=0 ? 'up' : 'down';
+      return `
+        <div class="bourse-row">
+          <div>
+            <div class="bourse-row-name">${s.name}</div>
+            <div class="bourse-row-sym">${s.symbol||''}</div>
+            <canvas width="140" height="36" class="bourse-spark" data-id="${s.id}"></canvas>
+          </div>
+          <div>
+            <div class="bourse-row-price">${fmt(Math.round(price))}</div>
+            <div class="bourse-row-chg ${chgCls}">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(1)}%</div>
+          </div>
+          <div class="bourse-row-actions">
+            <button class="bourse-btn buy" data-id="${s.id}" type="button">Investir</button>
+          </div>
+        </div>`;
+    }).join('');
+    marketList.querySelectorAll('.bourse-spark').forEach(c=>{
+      const s = stocks.find(x=>x.id===c.dataset.id);
+      if(s) drawSparkline(c, s);
+    });
+    marketList.querySelectorAll('.bourse-btn.buy').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const s = stocks.find(x=>x.id===btn.dataset.id);
+        if(s) openInvest(s);
+      });
+    });
+  }
+
+  function renderPortfolio(){
+    if(positions.length===0){
+      portfolioList.innerHTML = '<div class="bourse-empty">Aucune position pour l\'instant. Investis depuis l\'onglet Marché.</div>';
+      return;
+    }
+    portfolioList.innerHTML = positions.map(p=>{
+      const stock = stocks.find(s=>s.id===p.stockId);
+      const price = stock ? fakePrice(stock, Date.now()) : p.entryPrice;
+      const value = price * p.shares;
+      const gain  = value - p.investedAmount;
+      const gainPct = p.investedAmount ? (gain/p.investedAmount)*100 : 0;
+      const cls = gain>=0 ? 'up' : 'down';
+      return `
+        <div class="bourse-row" style="grid-template-columns:1fr auto auto;">
+          <div>
+            <div class="bourse-pos-top">
+              <span class="bourse-row-name">${p.stockName}</span>
+              <span class="bourse-pos-gain ${cls}">${gain>=0?'+':''}${fmt(Math.round(gain))} (${gainPct.toFixed(1)}%)</span>
+            </div>
+            <div class="bourse-pos-meta">${p.shares.toFixed(3)} parts · entrée à ${fmt(Math.round(p.entryPrice))}</div>
+          </div>
+          <div class="bourse-row-price">${fmt(Math.round(value))}</div>
+          <div class="bourse-row-actions">
+            <button class="bourse-btn sell" data-pos="${p.id}" type="button">Vendre</button>
+          </div>
+        </div>`;
+    }).join('');
+    portfolioList.querySelectorAll('.bourse-btn.sell').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const p = positions.find(x=>x.id===btn.dataset.pos);
+        if(p) openSell(p);
+      });
+    });
+  }
+
+  function openInvest(stock){
+    investMode = { type:'buy', stock };
+    investTitle.textContent = `Investir — ${stock.name}`;
+    investSub.textContent = `Cours actuel : ${fmt(Math.round(fakePrice(stock, Date.now())))} Coins · Solde dispo : ${fmt(CURRENT_BALANCE)} Coins`;
+    investAmount.value = '';
+    investAmount.placeholder = 'Montant en Coins';
+    investMsg.textContent = '';
+    investConfirm.textContent = 'Investir';
+    investOverlay.classList.add('show');
+    investAmount.focus();
+  }
+  function openSell(pos){
+    investMode = { type:'sell', position: pos };
+    const stock = stocks.find(s=>s.id===pos.stockId);
+    const price = stock ? fakePrice(stock, Date.now()) : pos.entryPrice;
+    investTitle.textContent = `Vendre — ${pos.stockName}`;
+    investSub.textContent = `Valeur actuelle de ta position : ${fmt(Math.round(price*pos.shares))} Coins (${pos.shares.toFixed(3)} parts)`;
+    investAmount.value = '';
+    investAmount.placeholder = 'Laisse vide pour tout vendre';
+    investMsg.textContent = '';
+    investConfirm.textContent = 'Vendre';
+    investOverlay.classList.add('show');
+  }
+  function closeInvest(){ investOverlay.classList.remove('show'); investMode = null; }
+  investCancel.addEventListener('click', closeInvest);
+  investOverlay.addEventListener('click', (e)=>{ if(e.target===investOverlay) closeInvest(); });
+
+  investConfirm.addEventListener('click', async ()=>{
+    if(!investMode) return;
+    investMsg.style.color = '';
+    if(!CURRENT_SHOP_CODE){
+      investMsg.style.color = 'var(--red)';
+      investMsg.textContent = 'Code boutique introuvable, recharge la page.';
+      return;
+    }
+    investConfirm.disabled = true;
+    try{
+      if(investMode.type === 'buy') await buyStock(investMode.stock);
+      else await sellPosition(investMode.position);
+      closeInvest();
+    } catch(err){
+      investMsg.style.color = 'var(--red)';
+      investMsg.textContent = err.message || 'Erreur, réessaie.';
+    } finally {
+      investConfirm.disabled = false;
+    }
+  });
+
+  async function buyStock(stock){
+    const amount = parseInt(investAmount.value, 10);
+    if(!amount || amount <= 0) throw new Error('Entre un montant valide.');
+    const price = fakePrice(stock, Date.now());
+    const ref = db.collection('shopCodes').doc(CURRENT_SHOP_CODE);
+    const posRef = ref.collection('investments').doc();
+    try{
+      await db.runTransaction(async (tx)=>{
+        const snap = await tx.get(ref);
+        const coins = snap.exists ? (snap.data().coins||0) : 0;
+        if(coins < amount) throw new Error('INSUFFICIENT_FUNDS');
+        tx.update(ref, { coins: firebase.firestore.FieldValue.increment(-amount) });
+        tx.set(posRef, {
+          stockId: stock.id, stockName: stock.name, stockSymbol: stock.symbol || '',
+          shares: amount / price, entryPrice: price, investedAmount: amount,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+    } catch(err){
+      if(err.message === 'INSUFFICIENT_FUNDS') throw new Error('Solde insuffisant pour investir ce montant.');
+      throw err;
+    }
+  }
+
+  async function sellPosition(pos){
+    const stock = stocks.find(s=>s.id===pos.stockId);
+    const price = stock ? fakePrice(stock, Date.now()) : pos.entryPrice;
+    const raw = investAmount.value.trim();
+    let sharesToSell = pos.shares;
+    if(raw){
+      const amountWanted = parseFloat(raw);
+      if(!amountWanted || amountWanted<=0) throw new Error('Montant invalide.');
+      sharesToSell = Math.min(pos.shares, amountWanted/price);
+    }
+    const payout = Math.round(sharesToSell * price);
+    const ref = db.collection('shopCodes').doc(CURRENT_SHOP_CODE);
+    const posRef = ref.collection('investments').doc(pos.id);
+    const remainingShares = pos.shares - sharesToSell;
+    await db.runTransaction(async (tx)=>{
+      tx.update(ref, { coins: firebase.firestore.FieldValue.increment(payout) });
+      if(remainingShares > 0.0001){
+        const ratio = remainingShares / pos.shares;
+        tx.update(posRef, { shares: remainingShares, investedAmount: pos.investedAmount * ratio });
+      } else {
+        tx.delete(posRef);
+      }
+    });
+  }
+
+  db.collection('stocks').orderBy('createdAt','desc').onSnapshot(snap=>{
+    stocks = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    if(overlay.classList.contains('show')) renderMarket();
+  }, err=> console.error('Bourse : erreur de chargement des actions', err));
+
+  // Le code boutique (CURRENT_SHOP_CODE) est défini de façon asynchrone plus haut
+  // dans la page (ensureCode()) ; on attend qu'il soit prêt avant d'écouter le
+  // portefeuille du joueur.
+  const waitCode = setInterval(()=>{
+    if(CURRENT_SHOP_CODE){
+      clearInterval(waitCode);
+      db.collection('shopCodes').doc(CURRENT_SHOP_CODE).collection('investments').onSnapshot(snap=>{
+        positions = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        if(overlay.classList.contains('show')) renderPortfolio();
+      }, err=> console.error('Bourse : erreur de chargement du portefeuille', err));
+    }
+  }, 300);
+
+  // Rafraîchit les cours affichés toutes les 3s sans recharger Firestore — le prix
+  // est une fonction pure du temps, pas besoin d'aller re-lire la base pour ça.
+  setInterval(()=>{
+    if(overlay.classList.contains('show')){ renderMarket(); renderPortfolio(); }
+  }, 3000);
+})();
 </script>
 
 </body>
