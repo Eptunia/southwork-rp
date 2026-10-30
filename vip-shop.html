@@ -914,6 +914,60 @@
   .bourse-invest-cancel:hover{ color:var(--text); }
   .bourse-invest-msg{ font-size:12px; margin-top:10px; min-height:14px; }
 
+  /* ----- Détail d'une action (graphique agrandi) ----- */
+  .bourse-row{ cursor:pointer; }
+  .bourse-detail-overlay{
+    position:fixed; inset:0; z-index:245; background:rgba(0,0,0,.8); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .bourse-detail-overlay.show{ opacity:1; pointer-events:auto; }
+  .bourse-detail-modal{
+    position:relative; width:100%; max-width:560px; max-height:86vh; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:24px 22px 22px; box-shadow:0 20px 60px -20px rgba(0,0,0,.65);
+  }
+  .bourse-detail-close{
+    position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:8px;
+    background:rgba(0,0,0,.5); border:1px solid var(--line); color:#fff; cursor:pointer;
+    font-size:15px; display:flex; align-items:center; justify-content:center;
+  }
+  .bourse-detail-close:hover{ border-color:var(--red); color:var(--red); }
+  .bourse-detail-head{ padding-right:36px; }
+  .bourse-detail-name{ font-family:'Poppins',sans-serif; font-size:19px; font-weight:800; }
+  .bourse-detail-sym{ color:var(--dim); font-size:12px; font-family:"Courier New",monospace; margin-top:2px; }
+  .bourse-detail-price{ font-family:"Courier New",monospace; font-size:30px; font-weight:800; margin-top:14px; }
+  .bourse-detail-chg{ font-size:13px; font-weight:700; margin-top:2px; }
+  .bourse-detail-chg.up{ color:#4ade80; } .bourse-detail-chg.down{ color:var(--red); }
+  .bourse-detail-tabs{ display:flex; gap:8px; margin:16px 0 10px; }
+  .bourse-detail-tab{
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    padding:6px 13px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer;
+    transition:all .15s ease;
+  }
+  .bourse-detail-tab.active{ background:#22c55e; border-color:#22c55e; color:#07220f; }
+  .bourse-detail-tab:hover:not(.active){ color:var(--text); border-color:#22c55e; }
+  .bourse-detail-chart-wrap{ position:relative; }
+  .bourse-detail-chart{ width:100%; height:220px; display:block; }
+  .bourse-detail-stats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+  .bourse-detail-stat{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+  }
+  .bourse-detail-stat label{
+    display:block; font-size:10.5px; letter-spacing:1px; text-transform:uppercase;
+    color:var(--dim); font-weight:700; margin-bottom:4px;
+  }
+  .bourse-detail-stat .val{ font-family:"Courier New",monospace; font-weight:800; font-size:14px; }
+  .bourse-detail-actions{ display:flex; gap:8px; margin-top:18px; }
+  .bourse-detail-actions button{
+    flex:1; border:none; border-radius:10px; padding:12px; font-weight:800; font-size:13px; cursor:pointer;
+  }
+  .bourse-detail-buy{ background:#22c55e; color:#07220f; }
+  .bourse-detail-buy:hover{ filter:brightness(1.1); }
+  .bourse-detail-sell{ background:transparent; border:1px solid var(--line) !important; color:var(--dim); }
+  .bourse-detail-sell:hover{ color:var(--text); border-color:var(--red); }
+  .bourse-detail-sell.hidden{ display:none; }
+
   html.hw .bourse-fab{ background:linear-gradient(135deg,#ff7a18,#c2410c); box-shadow:0 10px 26px -8px rgba(255,122,24,.7); }
 
   @media (max-width:520px){
@@ -1110,6 +1164,34 @@
         <button class="bourse-invest-confirm" id="bourseInvestConfirm" type="button">Investir</button>
       </div>
       <div class="bourse-invest-msg" id="bourseInvestMsg"></div>
+    </div>
+  </div>
+
+  <div class="bourse-detail-overlay" id="bourseDetailOverlay">
+    <div class="bourse-detail-modal">
+      <button class="bourse-detail-close" id="bourseDetailClose" type="button">✕</button>
+      <div class="bourse-detail-head">
+        <div class="bourse-detail-name" id="bourseDetailName">—</div>
+        <div class="bourse-detail-sym" id="bourseDetailSym"></div>
+        <div class="bourse-detail-price" id="bourseDetailPrice">—</div>
+        <div class="bourse-detail-chg" id="bourseDetailChg"></div>
+      </div>
+      <div class="bourse-detail-tabs">
+        <button class="bourse-detail-tab" data-span-hours="1" type="button">1H</button>
+        <button class="bourse-detail-tab active" data-span-hours="24" type="button">24H</button>
+        <button class="bourse-detail-tab" data-span-hours="168" type="button">7J</button>
+      </div>
+      <div class="bourse-detail-chart-wrap">
+        <canvas class="bourse-detail-chart" id="bourseDetailCanvas" width="600" height="220"></canvas>
+      </div>
+      <div class="bourse-detail-stats">
+        <div class="bourse-detail-stat"><label>Plus haut (période)</label><div class="val" id="bourseDetailHigh">—</div></div>
+        <div class="bourse-detail-stat"><label>Plus bas (période)</label><div class="val" id="bourseDetailLow">—</div></div>
+      </div>
+      <div class="bourse-detail-actions">
+        <button class="bourse-detail-buy" id="bourseDetailBuyBtn" type="button">Investir</button>
+        <button class="bourse-detail-sell hidden" id="bourseDetailSellBtn" type="button">Vendre ma position</button>
+      </div>
     </div>
   </div>
 
@@ -2170,6 +2252,21 @@ updateCartUI();
   const investConfirm = document.getElementById('bourseInvestConfirm');
   const investMsg     = document.getElementById('bourseInvestMsg');
 
+  const detailOverlay  = document.getElementById('bourseDetailOverlay');
+  const detailClose    = document.getElementById('bourseDetailClose');
+  const detailName     = document.getElementById('bourseDetailName');
+  const detailSym      = document.getElementById('bourseDetailSym');
+  const detailPrice    = document.getElementById('bourseDetailPrice');
+  const detailChg      = document.getElementById('bourseDetailChg');
+  const detailTabs     = [...document.querySelectorAll('.bourse-detail-tab')];
+  const detailCanvas   = document.getElementById('bourseDetailCanvas');
+  const detailHigh     = document.getElementById('bourseDetailHigh');
+  const detailLow      = document.getElementById('bourseDetailLow');
+  const detailBuyBtn   = document.getElementById('bourseDetailBuyBtn');
+  const detailSellBtn  = document.getElementById('bourseDetailSellBtn');
+  let detailStock = null;
+  let detailSpanHours = 24;
+
   let stocks = [];
   let positions = [];
   let investMode = null; // { type:'buy', stock } ou { type:'sell', position }
@@ -2211,6 +2308,114 @@ updateCartUI();
     ctx.stroke();
   }
 
+  // Graphique agrandi affiché dans la vue détail d'une action, avec grille,
+  // axe des prix et étiquettes min/max — contrairement à drawSparkline qui
+  // reste une mini-courbe minimaliste dans la liste.
+  function drawDetailChart(canvas, stock, spanHours){
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const padL = 54, padR = 10, padT = 12, padB = 10;
+    ctx.clearRect(0,0,w,h);
+    const now = Date.now();
+    const SPAN = spanHours*3600*1000;
+    const STEPS = 80;
+    const pts = [];
+    for(let i=0;i<=STEPS;i++) pts.push(fakePrice(stock, now - SPAN + (SPAN*i/STEPS)));
+    const min = Math.min(...pts), max = Math.max(...pts);
+    const range = (max-min) || 1;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+
+    // Grille horizontale + étiquettes de prix
+    ctx.strokeStyle = 'rgba(255,255,255,.08)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(255,255,255,.45)';
+    ctx.font = '10px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for(let i=0;i<=3;i++){
+      const y = padT + plotH*(i/3);
+      const val = max - range*(i/3);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(w-padR, y);
+      ctx.stroke();
+      ctx.fillText(fmt(Math.round(val)), padL-8, y);
+    }
+
+    // Courbe + zone sous la courbe
+    const up = pts[pts.length-1] >= pts[0];
+    const color = up ? '#4ade80' : '#ef4444';
+    ctx.beginPath();
+    pts.forEach((p,i)=>{
+      const x = padL + (i/STEPS)*plotW;
+      const y = padT + plotH - ((p-min)/range)*plotH;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const lastX = padL + plotW, lastY = padT + plotH - ((pts[pts.length-1]-min)/range)*plotH;
+    ctx.lineTo(lastX, padT+plotH);
+    ctx.lineTo(padL, padT+plotH);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, padT, 0, padT+plotH);
+    grad.addColorStop(0, up ? 'rgba(74,222,128,.22)' : 'rgba(239,68,68,.22)');
+    grad.addColorStop(1, up ? 'rgba(74,222,128,0)' : 'rgba(239,68,68,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Point du cours actuel
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3.5, 0, Math.PI*2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    return { min, max };
+  }
+
+  function renderDetailChart(){
+    if(!detailStock) return;
+    const price = fakePrice(detailStock, Date.now());
+    const prev  = fakePrice(detailStock, Date.now() - detailSpanHours*3600*1000);
+    const chg   = prev ? ((price-prev)/prev)*100 : 0;
+    const chgCls = chg>=0 ? 'up' : 'down';
+    detailPrice.textContent = `${fmt(Math.round(price))} Coins`;
+    detailChg.className = `bourse-detail-chg ${chgCls}`;
+    detailChg.textContent = `${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(1)}% sur la période`;
+    const { min, max } = drawDetailChart(detailCanvas, detailStock, detailSpanHours);
+    detailHigh.textContent = `${fmt(Math.round(max))} Coins`;
+    detailLow.textContent  = `${fmt(Math.round(min))} Coins`;
+  }
+
+  function openDetail(stock){
+    detailStock = stock;
+    detailName.textContent = stock.name;
+    detailSym.textContent = stock.symbol || '';
+    const pos = positions.find(p=>p.stockId===stock.id);
+    detailSellBtn.classList.toggle('hidden', !pos);
+    detailTabs.forEach(t=> t.classList.toggle('active', Number(t.dataset.spanHours)===detailSpanHours));
+    renderDetailChart();
+    detailOverlay.classList.add('show');
+  }
+  function closeDetail(){ detailOverlay.classList.remove('show'); detailStock = null; }
+  detailClose.addEventListener('click', closeDetail);
+  detailOverlay.addEventListener('click', (e)=>{ if(e.target===detailOverlay) closeDetail(); });
+  detailTabs.forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      detailSpanHours = Number(tab.dataset.spanHours);
+      detailTabs.forEach(t=> t.classList.toggle('active', t===tab));
+      renderDetailChart();
+    });
+  });
+  detailBuyBtn.addEventListener('click', ()=>{ if(detailStock){ closeDetail(); openInvest(detailStock); } });
+  detailSellBtn.addEventListener('click', ()=>{
+    const pos = detailStock && positions.find(p=>p.stockId===detailStock.id);
+    if(pos){ closeDetail(); openSell(pos); }
+  });
+  // Rafraîchit le graphique détaillé affiché toutes les 3s, en même temps que le marché
+  setInterval(()=>{ if(detailOverlay.classList.contains('show')) renderDetailChart(); }, 3000);
+
   function renderMarket(){
     if(stocks.length===0){
       marketList.innerHTML = '<div class="bourse-empty">Aucune action disponible pour le moment.</div>';
@@ -2222,7 +2427,7 @@ updateCartUI();
       const chg   = prev ? ((price-prev)/prev)*100 : 0;
       const chgCls = chg>=0 ? 'up' : 'down';
       return `
-        <div class="bourse-row">
+        <div class="bourse-row" data-id="${s.id}">
           <div>
             <div class="bourse-row-name">${s.name}</div>
             <div class="bourse-row-sym">${s.symbol||''}</div>
@@ -2242,9 +2447,16 @@ updateCartUI();
       if(s) drawSparkline(c, s);
     });
     marketList.querySelectorAll('.bourse-btn.buy').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
         const s = stocks.find(x=>x.id===btn.dataset.id);
         if(s) openInvest(s);
+      });
+    });
+    marketList.querySelectorAll('.bourse-row').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const s = stocks.find(x=>x.id===row.dataset.id);
+        if(s) openDetail(s);
       });
     });
   }
@@ -2262,7 +2474,7 @@ updateCartUI();
       const gainPct = p.investedAmount ? (gain/p.investedAmount)*100 : 0;
       const cls = gain>=0 ? 'up' : 'down';
       return `
-        <div class="bourse-row" style="grid-template-columns:1fr auto auto;">
+        <div class="bourse-row" style="grid-template-columns:1fr auto auto;" data-stock-id="${p.stockId}">
           <div>
             <div class="bourse-pos-top">
               <span class="bourse-row-name">${p.stockName}</span>
@@ -2277,9 +2489,16 @@ updateCartUI();
         </div>`;
     }).join('');
     portfolioList.querySelectorAll('.bourse-btn.sell').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
         const p = positions.find(x=>x.id===btn.dataset.pos);
         if(p) openSell(p);
+      });
+    });
+    portfolioList.querySelectorAll('.bourse-row').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const s = stocks.find(x=>x.id===row.dataset.stockId);
+        if(s) openDetail(s);
       });
     });
   }
